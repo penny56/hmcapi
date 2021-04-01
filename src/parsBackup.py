@@ -2,6 +2,7 @@
 This script intends to back up general partition (and adapters) settings and configurations on a CPC and save them
 into a config file for partition restore use.
 
+Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 21 2020 --- Support for NVMe storage group, device number info will record in storage group backup config file, not in the partition config file
 Updated on Jul 1, 2020 --- backup the adapter information after partition information, just for restore the description field at the time
                            [--adapter--]
@@ -18,13 +19,14 @@ Updated on August 3, 2018 --- Back up the accelerator virtual function and crypt
 Updated on July 23, 2018 --- Back up the FICON storage groups
 
 @author: Daniel Wu <yongwubj@cn.ibm.com>
+e.g: parsBackup.py -hmc 9.12.35.135 -cpc T257 -bakDir ./cfg
 '''
-from prsm2api import *
-from wsaconst import *
-import hmcUtils
-import argparse
-import ConfigParser, os, sys
-import datetime, readConfig, logging, string
+
+from CommonAPI.prsm2api import *
+from CommonAPI.wsaconst import *
+from CommonAPI.readConfig import *
+import CommonAPI.hmcUtils
+import os, sys, datetime, logging, string, argparse
 
 # to handle the Non ascii code, transfer python default coding from ascii to utf-8
 reload(sys)

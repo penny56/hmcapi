@@ -17,7 +17,6 @@ import pickle
 import re
 from subprocess import Popen, PIPE
 from sys import exc_info
-from numpy.distutils.fcompiler import none
 
 # logger object
 log = logging.getLogger(HMC_API_LOGGER)
@@ -2516,11 +2515,11 @@ def createStorageGroup(hmc, sgTempl):
         httpBody = json.dumps(sgTempl)
         # create workload
         resp = getHMCObject(hmc, 
-                            WSA_URI_MODIFY_STORAGE_GROUP, 
-                            "Modify Storage Group Properties", 
+                            WSA_URI_LIST_STORAGE_GROUP, 
+                            "Create Storage Group", 
                             httpMethod = WSA_COMMAND_POST, 
                             httpBody = httpBody, 
-                            httpGoodStatus = 200,           # HTTP created
+                            httpGoodStatus = 201,           # HTTP created
                             httpBadStatuses = [400, 403, 404, 409, 503])
         return assertValue(pyObj=resp, key='object-uri')
     except HMCException as exc:   # raise HMCException
@@ -2695,4 +2694,3 @@ def getStorageControlUnitProperties(hmcConn=None,
         raise exc
     finally:
         log.debug("Completed") 
-

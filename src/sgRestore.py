@@ -4,8 +4,9 @@ Created on Mar 30, 2018
 This script is to submit a storage request to storage admin "SAM".
 
 Example:
--hmc 9.12.35.135 -cpc M90 -config M90-StorageGroups.cfg
+-hmc 9.12.35.135 -cpc T257 -config T257-sg.cfg -email xxx@cn.ibm.com
 
+Updated on Mar 31, 2021 --- Move to github
 Updated on August 6, 2020 --- Add support to NVMe storage group
                               We need to update the NVMe adapter ID if any changed
 Updated on September 10, 2018 --- Add SAM's email address as a input parameter
@@ -35,9 +36,9 @@ stortype = fcp
 @author: mayijie
 '''
 
-from prsm2api import *
-from wsaconst import *
-import hmcUtils
+from CommonAPI.prsm2api import *
+from CommonAPI.wsaconst import *
+import CommonAPI.hmcUtils
 import sys, ConfigParser, logging, threading, os, argparse, traceback, re
 
 hmc = None

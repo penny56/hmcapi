@@ -13,14 +13,13 @@ Updated on July 15, 2018 --- Back up the FICON storage groups
 
 @author: Daniel Wu <yongwubj@cn.ibm.com> 03/21/2018
 e.g: sgBackup.py -hmc 9.12.35.134 -cpc M90 -bakDir /tmp/m90-backup
+e.g: sgBackup.py -hmc 9.12.35.134 -cpc T90 -bakDir ./cfg
 '''
-from prsm2api import *
-from wsaconst import *
-import hmcUtils
-import argparse
-import ConfigParser, os, sys
-import datetime, readConfig, logging, string
-import json
+from CommonAPI.prsm2api import *
+from CommonAPI.wsaconst import *
+from CommonAPI.readConfig import *
+import CommonAPI.hmcUtils
+import os, sys, datetime, logging, string, argparse, json
 
 # to handle the Non ascii code, transfer python default coding from ascii to utf-8
 reload(sys)

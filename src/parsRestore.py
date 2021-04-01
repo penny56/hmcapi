@@ -1,6 +1,7 @@
 '''
 Created on Dec 5, 2017
 
+Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 25, 2020 --- Support for NVMe storage groups
 Updated on Aug 11, 2020 --- Ahead restore the adapter description field before restore partitions
 Updated on Jul 7, 2020 --- Set the default encoding from ascii to utf-8
@@ -48,8 +49,8 @@ All the partition information will be created simultaneously by multi-threading.
 
 You couldn't indicate the 'cp' processor type in a 'ifl' only cpc (M90), or you will encounter a "Cp processor is not available" exception!
 
-Example:
--hmc 9.12.35.135 -cpc M90 -config createP2Partition.cfg
+Example:        --> unlike sgRestore, no email option.
+-hmc 9.12.35.135 -cpc T257 -config ./cfg/T257-Part.cfg
 
 config file example:
 [M257-KVMP11-0823]
@@ -96,9 +97,9 @@ zzbootopt = {'fcp-boot-configuration-selector': 0, 'fcp-volume-uuid': '001738003
 @author: mayijie
 '''
 
-from prsm2api import *
-from wsaconst import *
-import hmcUtils
+from CommonAPI.prsm2api import *
+from CommonAPI.wsaconst import *
+import CommonAPI.hmcUtils
 import sys, ConfigParser, logging, threading, os, argparse, traceback, re
 
 # to handle the Non ascii code, transfer python default coding from ascii to utf-8
