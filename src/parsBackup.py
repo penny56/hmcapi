@@ -2,6 +2,7 @@
 This script intends to back up general partition (and adapters) settings and configurations on a CPC and save them
 into a config file for partition restore use.
 
+Updated on Apr 14, 2021 --- Support Tape links back up
 Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 21 2020 --- Support for NVMe storage group, device number info will record in storage group backup config file, not in the partition config file
 Updated on Jul 1, 2020 --- backup the adapter information after partition information, just for restore the description field at the time
@@ -200,7 +201,7 @@ try:
     apiMinVer = hmc.apiMinorVer
 
     # current HMC API minor version is 22, and major version greater than 2.
-    if apiMinVer >= 2:
+    if apiMajVer >= 2:
         sgIsAvai = True
     else:
         sgIsAvai = False
@@ -264,6 +265,8 @@ try:
    
     # Retrieve Processor and Memory settings for all partitions
     for parName in allParNamesList:
+        
+        if parName != 'T257-SUSE01': pass
 
         # Dictionary to save basic configs for each partition
         parBasicCfg = dict()
@@ -402,6 +405,24 @@ try:
                 vHBAsCfg['vHBA'+ str(i)] = hbaCfg
             parBasicCfg['vHBAs'] = vHBAsCfg
  
+        # YJ add for Tape Link
+        tapelinkCfg = dict()
+        tapelinkuris = assertValue(pyObj=parProp, key='tape-link-uris')
+        if len(tapelinkuris) > 0:
+            # have tape links attached in this partition
+            for tapelinkuri in tapelinkuris:
+                tlProp = getTapeLinkProperties(hmc, tlURI=tapelinkuri)
+                tlName = assertValue(pyObj=tlProp, key='name')
+                virtaperesuris = assertValue(pyObj=tlProp, key='virtual-tape-resource-uris')
+                devnumarr = []
+                for virtaperesuri in virtaperesuris:
+                    vtrProp = getVirtualTapeResourceProperties(hmc, virtaperesuri)
+                    if assertValue(pyObj=vtrProp, key='partition-uri') == parURI:
+                        devnumarr.append(assertValue(pyObj=vtrProp, key='device-number'))
+                tapelinkCfg[tlName] = devnumarr
+        parBasicCfg['tapelink'] = tapelinkCfg
+                
+ 
         # YJ add for the virtual function for accelerator section
         virtualFuncUriList = assertValue(pyObj=parProp, key='virtual-function-uris')
         vfCfgList = []
@@ -535,6 +556,9 @@ try:
                 for key3 in sorted(allParsCfg[key1][key2].keys()):
                     for key4 in sorted(allParsCfg[key1][key2][key3].keys()):
                         allConfig.set(key1, key3 + '_' + key4, allParsCfg[key1][key2][key3][key4])
+            elif "tapelink" in key2:
+                allConfig.set(key1, '#Tape Links')
+                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
             elif "zAccelerators" in key2:
                 allConfig.set(key1, '#accelerator virtual functions')
                 allConfig.set(key1, key2 ,allParsCfg[key1][key2])

@@ -1,6 +1,7 @@
 '''
 Created on Dec 5, 2017
 
+Updated on Apr 20, 2021 --- Support for tape links
 Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 25, 2020 --- Support for NVMe storage groups
 Updated on Aug 11, 2020 --- Ahead restore the adapter description field before restore partitions
@@ -135,6 +136,7 @@ PARTITION_API_MAP = {'par_type' : 'type',
                      'sgdevnum' : None, 
                      'sgficon' : None,
                      'sgnvme' : None,
+                     'tapelink' : None,
                      'zaccelerators' : None,
                      'zcryptos' : None,
                      'zzbootopt' : None
@@ -246,7 +248,7 @@ def procSinglePartition(parName):
     try:
         if lock.acquire():
             partitionDict = sectionDict[parName]
-            (parTemp, vnicDict, sgDevNumDict, ficonList, nvmeList, acceList, cryptoDict, bootOptionDict) = createPartitionTemplate(parName, partitionDict)
+            (parTemp, vnicDict, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict) = createPartitionTemplate(parName, partitionDict)
             lock.release()
         if lock.acquire():
             partRet = createPartition(hmc, cpcID, parTemp)
@@ -266,6 +268,8 @@ def procSinglePartition(parName):
                     constructStorageGroupsAndSetDevNum(partRet, parName, ficonList=ficonList)
                 if len(nvmeList) != 0:
                     constructStorageGroupsAndSetDevNum(partRet, parName, nvmeList=nvmeList)
+                if len(tlDict) != 0:
+                    constructTapelinks(partRet, parName, tlDict)
                 if len(acceList) != 0:
                     constructAccelerators(partRet, parName, acceList)
                 if len(cryptoDict) != 0:
@@ -299,6 +303,7 @@ def createPartitionTemplate(parName, partitionDict):
     sgDevNumDict = dict()
     ficonList = []
     nvmeList = []
+    tapelink = dict()
     acceList = []
     cryptoDict = dict()
     bootOptionDict = dict()
@@ -370,6 +375,8 @@ def createPartitionTemplate(parName, partitionDict):
                     ficonList = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'sgnvme'):
                     nvmeList = eval(partitionDict[propertyKey])
+                elif (propertyKey == 'tapelink'):
+                    tlDict = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'zaccelerators'):
                     acceList = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'zcryptos'):
@@ -392,7 +399,7 @@ def createPartitionTemplate(parName, partitionDict):
     except  Exception as exc:
         print "[EXCEPTION createPartitionTemplate: %s]" %parName, exc
         raise exc
-    return (partitionTempl, vnicDict, sgDevNumDict, ficonList, nvmeList, acceList, cryptoDict, bootOptionDict)
+    return (partitionTempl, vnicDict, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict)
 
 # ------------------------------------------------------------------ #
 # ----- End of createPartitionTemplate function -------------------- #
@@ -533,6 +540,26 @@ def constructStorageGroupsAndSetDevNum(partUri, parName, sgDevNumDict=None, fico
 # ----- End of constructStorageGroups function --------------------- #
 # ------------------------------------------------------------------ #
 
+def constructTapelinks(partUri, parName, tlDict):
+    global hmc, cpcID, cpcURI
+    partID = partUri.replace('/api/partitions/','')
+    
+    try:
+        for (tlName, devnumList)in tlDict.items():
+            query = 'cpc-uri' + '=' + cpcURI + '&' + 'name' + '=' + tlName
+            tls = listTapeLinks(hmc, query)
+            if (len(tls) == 0):
+                exc = Exception("Attach tape link failed. The indicated tape link: " + tlName + " not exist (restored failed or been removed before partition restore) in the system.")
+                raise exc
+            tlTempl = dict()
+            tlTempl['tape-link-uri'] = tls[0]['object-uri']
+            attachTapeLink(hmc, partID, tlTempl)
+            if devnumList != None:
+                setTapeLinkDeviceNumber(partUri, parName, tls[0]['object-uri'], tlName, devnumList)
+        print ">>> Construct tape link for %s successfully: %s" %(parName, tlDict.keys())
+    except Exception as exc:
+        print "[EXCEPTION constructTapelinks: %s] Construct tape links: %s failed!" %(parName, tlDict.keys()), exc.message
+
 # ----- obsoleted in DPM R4.2 ----- #
 def constructAccelerators(partUri, parName, acceList):
     global hmc, cpcID
@@ -577,7 +604,6 @@ def constructCryptos(partUri, parName, cryptoDict):
 # ------------------------------------------------------------------ #
 def setDeviceNumber(partUri, parName, sgName, sgDevNumDict):
     global hmc
-    partID = partUri.replace('/api/partitions/','')
     try:
         # should we check the status of sg here? I think no.
         sgUri = selectStorageGroup(hmc, sgName)
@@ -620,6 +646,27 @@ def setDeviceNumber(partUri, parName, sgName, sgDevNumDict):
         print "[EXCEPTION setDeviceNumber: %s] Device number: %s set for storage group: % failed!" %(parName, sgName, vsrTempl['device-number']), exc.message
 # ------------------------------------------------------------------ #
 # ----- End of setDeviceNumber function ---------------------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ----- Start of setTapeLinkDeviceNumber function ------------------ #
+# ------------------------------------------------------------------ #
+def setTapeLinkDeviceNumber(partUri, parName, tlUri, tlName, devnumList):
+    global hmc
+    try:
+        query = 'partition-uri' + '=' + partUri
+        vtrs = listVirtualTapeResourcesOfaTapeLink(hmc, tlUri, query)
+        
+        for vtr in vtrs:
+            vtrUri = vtr['element-uri']
+            vtrTempl = dict()
+            vtrTempl['device-number'] = devnumList.pop()
+            if updateVirtualTapeResourceProperties(hmc, vtrUri, vtrTempl):
+                print ">>> Set Tape link device number for %s successfully: %s" %(tlName, vtrTempl['device-number'])
+    except Exception as exc:
+        print "[EXCEPTION setTapeLinkDeviceNumber: %s] %s set for partition: %s failed!" %(tlName, devnumList, parName), exc.message
+# ------------------------------------------------------------------ #
+# ----- End of setTapeLinkDeviceNumber function -------------------- #
 # ------------------------------------------------------------------ #
 
 def setBootOption(partUri, parName, bootOptionDict):

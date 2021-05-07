@@ -356,6 +356,20 @@ WSA_URI_ATTACH_STORAGE_GROUP = '/api/partitions/%s/operations/attach-storage-gro
 WSA_URI_LIST_VIRTUAL_STORAGE_RESOURCES = '/api/storage-groups/%s/virtual-storage-resources'
 
 WSA_URI_REQUEST_STORAGE_GROUP_FULFILLMENT = '/api/storage-groups/%s/operations/request-fulfillment'
+
+# For Tape links
+WSA_URI_LIST_TAPE_LINKS = '/api/tape-links'
+
+WSA_URI_GET_TAPE_LINK_PROPERTIES = '/api/tape-links/%s'
+
+WSA_URI_LIST_TAPE_LIBRARIES = '/api/tape-libraries'
+
+WSA_URI_ATTACH_TAPE_LINK = '/api/partitions/%s/operations/attach-tape-link'
+
+WSA_URI_GET_TAPE_LIBRARY_PROPERTIES = '/api/tape-libraries/%s'
+
+WSA_URI_LIST_VIRTUAL_TAPE_RESOURCES_OF_A_TAPE_LINK = '%s/virtual-tape-resources'
+
 #############################################################################
 # Testcase exit return codes
 #############################################################################

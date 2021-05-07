@@ -2694,3 +2694,288 @@ def getStorageControlUnitProperties(hmcConn=None,
         raise exc
     finally:
         log.debug("Completed") 
+
+# ---------------------------------------------------------------------------------------- #
+# ------------------------------------- For FCP Tape Link -------------------------------- #
+# ---------------------------------------------------------------------------------------- #
+
+
+
+# ------------------------------------------------------------------ #
+# ------- Start of listTapeLinks function -------------------------- #
+# ------------------------------------------------------------------ #
+def listTapeLinks(hmcConn,
+                  query=None
+                  ):
+    log.debug("Entered")
+    uri = WSA_URI_LIST_TAPE_LINKS
+    if query != None:
+        uri += '?' + query
+    try:
+        # list Tape Links
+        return getHMCObjectList(hmcConn,
+                                uri,
+                                "List Tape Links",
+                                "tape-links",
+                                httpBadStatuses=[400])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("List Tape Links")
+        raise exc
+    finally:
+        log.debug("Completed")
+
+# ------------------------------------------------------------------ #
+# ------- End of listTapeLinks function ---------------------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------- Start of getTapeLinkProperties function ---------------- #
+# ------------------------------------------------------------------ #
+def getTapeLinkProperties(hmcConn,
+                          tlID=None,
+                          tlURI=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if tlID != None:
+            URI = WSA_URI_GET_TAPE_LINK_PROPERTIES % tlID
+        elif tlURI != None:
+            URI = tlURI
+        else:
+            exc = HMCException("getTapeLinkProperties",
+                               "You should specify either tlID or tlURI parameters")
+            raise exc
+        # get partition properties
+        return getHMCObject(hmcConn, 
+                            URI,
+                            "Get Tape Link Properties")
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("getTapeLinkProperties")
+        raise exc
+    finally:
+        log.debug("Completed")
+# ------------------------------------------------------------------ #
+# ----------- End of getTapeLinkProperties function ---------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------- Start of getVirtualTapeResourceProperties function ----- #
+# ------------------------------------------------------------------ #
+def getVirtualTapeResourceProperties(hmcConn,
+                                     vtrURI=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if vtrURI == None:
+            exc = HMCException("getVirtualTapeResourceProperties",
+                               "You should specify the vtrURI parameter")
+            raise exc
+        # get partition properties
+        return getHMCObject(hmcConn, 
+                            vtrURI,
+                            "Get Virtual Tape Resource Properties")
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("getVirtualTapeResourceProperties")
+        raise exc
+    finally:
+        log.debug("Completed")
+# ------------------------------------------------------------------ #
+# ----------- End of getVirtualTapeResourceProperties function ----- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ----- Start of createTapeLink function --------------------------- #
+# ------------------------------------------------------------------ #
+def createTapeLink(hmc, tlTempl):
+    try:
+        # prepare HTTP body as JSON
+        httpBody = json.dumps(tlTempl)
+        # create workload
+        resp = getHMCObject(hmc, 
+                            WSA_URI_LIST_TAPE_LINKS, 
+                            "Create Tape Link", 
+                            httpMethod = WSA_COMMAND_POST, 
+                            httpBody = httpBody, 
+                            httpGoodStatus = 201,           # HTTP created
+                            httpBadStatuses = [400, 403, 404, 409, 503])
+        return assertValue(pyObj=resp, key='object-uri')
+    except HMCException as exc:   # raise HMCException
+        print "[HMCEXCEPTION createTapeLink]", exc.message
+        if exc.httpResponse != None:
+            print "[HMCEXCEPTION createTapeLink]", eval(exc.httpResponse)['message']
+        raise exc
+    except Exception as exc:
+        print "[EXCEPTION createTapeLink]", exc
+        raise exc
+
+# ------------------------------------------------------------------ #
+# ----- End of createTapeLink function ----------------------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------------- Start of attachTapeLink function ------------- #
+# ------------------------------------------------------------------ #
+def attachTapeLink(hmcConn,
+                   partID=None,
+                   tlProp=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if partID == None:
+            exc = HMCException("attachTapeLink",
+                               "you should specify partition ID parameter")
+            raise exc
+        else:
+            if tlProp != None:
+                # Prepare httpbody as JSON
+                httpBody = json.dumps(tlProp)
+                # attach the storage group
+                resp = getHMCObject(hmcConn,
+                                    WSA_URI_ATTACH_TAPE_LINK % partID,
+                                    "Attach Tape Link to Partition",
+                                    httpMethod=WSA_COMMAND_POST,
+                                    httpBody=httpBody,
+                                    httpGoodStatus=204,           # HTTP created
+                                    httpBadStatuses=[400, 403, 404, 409, 503])
+                return assertValue(pyObj=resp, key='element-uri')
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("attachTapeLink")
+        raise exc
+    finally:
+        log.debug("attachTapeLink")
+# ------------------------------------------------------------------ #
+# ----------------- End of attachTapeLink function ----------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ------- Start of listTapeLibraries function ---------------------- #
+# ------------------------------------------------------------------ #
+def listTapeLibraries(hmcConn,
+                      query=None
+                      ):
+    log.debug("Entered")
+    uri = WSA_URI_LIST_TAPE_LIBRARIES
+    if query != None:
+        uri += '?' + query
+    try:
+        # list Tape Links
+        return getHMCObjectList(hmcConn,
+                                uri,
+                                "List Tape Libraries",
+                                "tape-libraries",
+                                httpBadStatuses=[400])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("List Tape Libraries")
+        raise exc
+    finally:
+        log.debug("Completed")
+
+# ------------------------------------------------------------------ #
+# ------- End of listTapeLibraries function ------------------------ #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------- Start of getTapeLibraryProperties function ------------- #
+# ------------------------------------------------------------------ #
+def getTapeLibraryProperties(hmcConn,
+                             tlID=None,
+                             tlURI=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if tlID != None:
+            URI = WSA_URI_GET_TAPE_LIBRARY_PROPERTIES % tlID
+        elif tlURI != None:
+            URI = tlURI
+        else:
+            exc = HMCException("getTapeLibraryProperties",
+                               "You should specify either tlID or tlURI parameters")
+            raise exc
+        # get partition properties
+        return getHMCObject(hmcConn, 
+                            URI,
+                            "Get Tape Library Properties")
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("getTapeLibraryProperties")
+        raise exc
+    finally:
+        log.debug("Completed")
+# ------------------------------------------------------------------ #
+# ----------- End of getTapeLibraryProperties function ------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ------- Start of listVirtualTapeResourcesOfaTapeLink function ---- #
+# ------------------------------------------------------------------ #
+def listVirtualTapeResourcesOfaTapeLink(hmcConn,
+                                        tlUri,
+                                        query=None
+                                        ):
+    log.debug("Entered")
+    uri = WSA_URI_LIST_VIRTUAL_TAPE_RESOURCES_OF_A_TAPE_LINK % tlUri
+    if query != None:
+        uri += '?' + query
+    try:
+        # list Virtual Tape Resource of a Tape Link
+        return getHMCObjectList(hmcConn,
+                                uri,
+                                "List Virtual Tape Resources",
+                                "virtual-tape-resources",
+                                httpBadStatuses=[400, 404])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("List Virtual Tape Resources of a Tape Link")
+        raise exc
+    finally:
+        log.debug("Completed")
+
+# ------------------------------------------------------------------ #
+# ------- End of listVirtualTapeResourcesOfaTapeLink function ------ #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------- Start of updateVirtualTapeResourceProperties function ---#
+# ------------------------------------------------------------------ #
+def updateVirtualTapeResourceProperties(hmcConn,
+                                        elementUri=None,
+                                        vtrProp=None,
+                                        ):
+    log.debug("Entered")
+    updateSuccess = False
+    try:
+        # check input params
+        if elementUri == None:
+            exc = HMCException("updateVirtualTapeResourceProperties",
+                               "you should specify the element uri parameter")
+            raise exc
+        if vtrProp != None:
+            # prepare HTTP body as JSON
+            httpBody = json.dumps(vtrProp)
+            # update new properties
+            getHMCObject(hmcConn,
+                         httpPath=elementUri,
+                         actionDesc='Update Virtual Tape Resource Properties',
+                         httpMethod=WSA_COMMAND_POST,
+                         httpBody=httpBody,
+                         httpGoodStatus=204,
+                         httpBadStatuses=[400, 403, 404, 409, 503])
+            updateSuccess = True
+        else:
+            exc = HMCException("updateVirtualTapeResourceProperties",
+                               "you should specify vtrProp for vtr update")
+    except HMCException as exc:   # raise HMCException
+        updateSuccess = False
+        exc.setMethod("updateVirtualTapeResourceProperties")
+        if exc != None:
+            print "[EXCEPTION updateVirtualTapeResourceProperties] ", exc.httpResponse
+        raise exc
+    except Exception as exc:
+        exc = HMCException("getHMCObject",
+                           "Unknown failure happened",
+                           httpResponse=exc.httpResponse,
+                           origException=exc)
+    finally:
+        log.debug("Completed")
+        return updateSuccess
+# ------------------------------------------------------------------ #
+# ----------- End of updateVirtualTapeResourceProperties function #
+# ------------------------------------------------------------------ #

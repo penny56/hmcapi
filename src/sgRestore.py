@@ -6,6 +6,7 @@ This script is to submit a storage request to storage admin "SAM".
 Example:
 -hmc 9.12.35.135 -cpc T257 -config T257-sg.cfg -email xxx@cn.ibm.com
 
+Updated on Apr 12, 2021 --- Support Tape links restore
 Updated on Mar 31, 2021 --- Move to github
 Updated on August 6, 2020 --- Add support to NVMe storage group
                               We need to update the NVMe adapter ID if any changed
@@ -40,6 +41,7 @@ from CommonAPI.prsm2api import *
 from CommonAPI.wsaconst import *
 import CommonAPI.hmcUtils
 import sys, ConfigParser, logging, threading, os, argparse, traceback, re
+from pip._vendor.distlib import DistlibException
 
 hmc = None
 cpcID = None
@@ -48,11 +50,12 @@ hmcHost = None
 cpcName = None
 configFile = None
 emailList = None
-createPass = list()
 createFail = list()
 
 # the key is the sg name, the value is the properties of the sg, by dict format
 sectionDict = dict()
+# Tape Link dict
+tlDict = dict()
 
 # for multi-thread write protection
 lock = threading.Lock()
@@ -253,6 +256,46 @@ def constructSvTemplate(svCfgList):
 # ----- End of constructSvTemplate function ------------------------ #
 # ------------------------------------------------------------------ #
 
+# ------------------------------------------------------------------ #
+# ----- Start of constructTapeLinkTemplate function ---------------- #
+# ------------------------------------------------------------------ #
+def constructTapeLinkTemplate(tlName, tlDict):    
+    global cpcURI, emailList
+    tlTempl = dict()
+    
+    try:
+        tlTempl['name'] = tlName
+        tlTempl['cpc-uri'] = cpcURI
+        
+        # for common properties
+        if (tlDict.has_key('description') and tlDict['description'] != ''):
+            tlTempl['description'] = tlDict['description']
+        if (tlDict.has_key('max-partitions')):
+            tlTempl['max-partitions'] = int(tlDict['max-partitions'])
+        if (tlDict.has_key('connectivity')):
+            tlTempl['connectivity'] = int(tlDict['connectivity'])
+        
+        # if the backup config file have tape library name section, and library name exist in restore cpc 
+        if (tlDict.has_key('tape-library-name') and tlDict['tape-library-name'] != ''):
+            tLibName = tlDict['tape-library-name'].replace(' ', '+')
+            query = 'cpc-uri' + '=' + cpcURI + '&' + 'name' + '=' + tLibName
+            tLibEntities = listTapeLibraries(hmc, query)
+            if len(tLibEntities) > 0:
+                tlTempl['tape-library-uri'] = tLibEntities[0]['object-uri']
+        
+        tlTempl['email-to-addresses'] = emailList.split(',')
+        
+        tlRet = createTapeLink(hmc, tlTempl)
+            
+    except  Exception as exc:
+        print "[EXCEPTION constructTapeLinkTemplate]", exc
+        createFail.append(tlName)
+        raise exc
+
+# ------------------------------------------------------------------ #
+# ----- End of constructTapeLinkTemplate function ------------------ #
+# ------------------------------------------------------------------ #
+
 # main function
 try:
     parseArgs()
@@ -272,12 +315,19 @@ try:
     
     threads = []
     for sgName in sectionDict.keys():
+        if not sectionDict[sgName].has_key("stortype"):
+            # for tape links handle
+            tlDict[sgName] = sectionDict[sgName]
+            continue
         t = threading.Thread(target=procSingleStorageGroup, args=(sgName,))
         print ">>> Requesting Storage Group: " + sgName + "..."
         t.start()
         threads.append(t)
     for t in threads:
         t.join()
+
+    for tlName in tlDict.keys():
+        constructTapeLinkTemplate(tlName, tlDict[tlName])
 
 except IOError as exc:
     print "[EXCEPTION] Configure file read error!", exc
@@ -287,8 +337,6 @@ except Exception as exc:
 finally:
     if hmc != None:
         hmc.logoff()
-    if (len(createPass) != 0):
-        print "Here are the storage group(s) be created successfully:", createPass
     if (len(createFail) != 0):
-        print "Here are the storage group(s) be created failed:", createFail
+        print "Here are the storage groups / tape links be created failed:", createFail
     print "Script run completed!!!"

@@ -2,6 +2,7 @@
 This script intends to generally back up Storage Groups configurations on a CPC and save them
 into a config file for later restoration.
 
+Updated on Apr 7, 2021 --- Support Tape links back up
 Updated on Oct 26, 2020 --- Add 'unit-address' property in backup config file, no special use on restore, just record the FICON fulfilled volume ID
 Updated on Aug 6, 2020 --- Support NVMe storage group
 Updated on Jun 4, 2020 --- Add fulfillment state of storage group, this property will not be used when restore
@@ -167,6 +168,10 @@ hmc = None
 bakSGsConfig = dict()
 # record for all storage groups get exception
 bakSGsFailed = dict()
+# configuration for all Tape Links on specified CPC
+bakTLsConfig = dict()
+# record for all Tape Links get exception
+bakTLsFailed = dict()
 
 try:
     parseArgs()
@@ -187,6 +192,7 @@ try:
     sgURIListByCPC = []
     sgNameListByCPC = []
     sgList = getStorageGroupList(hmc)
+    
     for sg in sgList:
         if sg['cpc-uri'] == cpcURI:
             sgURIListByCPC.append(sg['object-uri'])
@@ -288,33 +294,70 @@ try:
             bakSGsFailed[sgName] = exc
             continue
 
+    # Get all FCP Tape links
+    query = 'cpc-uri' + '=' + cpcURI
+    tls = listTapeLinks(hmc, query)
+    
+    for tlEntity in tls:
+        try:
+            tlProps = getTapeLinkProperties(hmc, tlURI=tlEntity['object-uri'])
+            bakTLCfg = dict()
+            tlName = assertValue(pyObj=tlProps, key='name')
+            bakTLCfg['description'] = assertValue(pyObj=tlProps, key='description')
+            bakTLCfg['max-partitions'] = assertValue(pyObj=tlProps, key='max-partitions')
+            bakTLCfg['connectivity'] = assertValue(pyObj=tlProps, key='connectivity')
+            # fulfillment-state not used in restore, since all new restored tape link is in pending state
+            bakTLCfg['fulfillment-state'] = assertValue(pyObj=tlProps, key='fulfillment-state')
+            
+            tLibUri = assertValue(pyObj=tlProps, key='tape-library-uri')
+            if tLibUri != None:
+                tLibProps = getTapeLibraryProperties(hmc, tlURI=tLibUri)
+                bakTLCfg['tape-library-name'] = assertValue(pyObj=tLibProps, key='name')
+
+            print "[%s] -> Tape Link, back up..." % (tlName)
+            # add bakTLCfg to bakTLsCfg
+            bakTLsConfig[tlName] = bakTLCfg
+        except Exception as exc:
+            if bakTLsConfig.has_key(tlName):
+                del bakTLsConfig[tlName]
+            bakTLsFailed[tlName] = exc
+
     # Generate backup config file 
-    sgConfig = ConfigParser.ConfigParser(allow_no_value=True)
+    sgtlConfig = ConfigParser.ConfigParser(allow_no_value=True)
+    
+    # For storage groups
     for key1 in sorted(bakSGsConfig.keys()):
-        sgConfig.add_section(key1)
+        sgtlConfig.add_section(key1)
         for key2 in sorted(bakSGsConfig[key1].keys()):
             if bakSGsConfig[key1][key2] != None:
                 if "sgDesc" in key2:
-                    sgConfig.set(key1, '#Storage Group Description')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Storage Group Description')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "storType" in key2:
-                    sgConfig.set(key1, '#Storage Group Type')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Storage Group Type')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "sgShared" in key2:
-                    sgConfig.set(key1, '#Storage Group shared or not')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Storage Group shared or not')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "sgState" in key2:
-                    sgConfig.set(key1, '#Storage Group fulfillment state')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Storage Group fulfillment state')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "numOfPaths" in key2:
-                    sgConfig.set(key1, '#Number of paths or adapters')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Number of paths or adapters')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "maxNumOfPars" in key2:
-                    sgConfig.set(key1, '#Maximum number of partitions')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Maximum number of partitions')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
                 elif "sgStorVolsCfg" in key2:
-                    sgConfig.set(key1, '#Storage volume configs')
-                    sgConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, '#Storage volume configs')
+                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+    
+    # For Tape Links
+    for key1 in sorted(bakTLsConfig.keys()):
+        sgtlConfig.add_section(key1)
+        for key2 in sorted(bakTLsConfig[key1].keys()):
+            if bakTLsConfig[key1][key2] != None:
+                sgtlConfig.set(key1, key2 ,bakTLsConfig[key1][key2])
 
     # check if backupDir existed or not
     if os.path.exists(backupDir) is False:
@@ -324,10 +367,10 @@ try:
     filePath = backupDir + '/' + cpcName + '-StorGroups-' + time.strftime("%Y%m%d-%H%M%S", time.localtime()) + '.cfg'
 
     with open(filePath, 'wb') as configfile:
-        sgConfig.write(configfile)
+        sgtlConfig.write(configfile)
     
-    if sgConfig :
-        print "\nAbove %s Storage-Groups on %s were saved into below file successfully."%(len(bakSGsConfig),cpcName)
+    if sgtlConfig :
+        print "\nAbove %s Storage-Groups and Tape-Links on %s were saved into below file successfully."%(len(bakSGsConfig)+len(bakTLsConfig),cpcName)
         print "%s"%filePath
     else:
         print "\nStorage Group backup failed, please check the environment by manual"
@@ -335,6 +378,10 @@ try:
     if bakSGsFailed:
         print "\nBelow %s Storage-Groups on %s back up failed." %(len(bakSGsFailed),cpcName)
         for k, v in bakSGsFailed.items():
+            print "[%s] -> reason: %s" %(k, v)
+    if bakTLsFailed:
+        print "\nBelow %s Tape-Links on %s back up failed." %(len(bakTLsFailed),cpcName)
+        for k, v in bakTLsFailed.items():
             print "[%s] -> reason: %s" %(k, v)
     
 except Exception as exc:
