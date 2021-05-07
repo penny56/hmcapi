@@ -364,7 +364,7 @@ try:
         os.makedirs(backupDir)
     
     # Write backup configs into a file
-    filePath = backupDir + '/' + cpcName + '-StorGroups-' + time.strftime("%Y%m%d-%H%M%S", time.localtime()) + '.cfg'
+    filePath = backupDir + '/' + cpcName + '-Storages-' + time.strftime("%Y%m%d-%H%M%S", time.localtime()) + '.cfg'
 
     with open(filePath, 'wb') as configfile:
         sgtlConfig.write(configfile)
