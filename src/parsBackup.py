@@ -2,6 +2,7 @@
 This script intends to back up general partition (and adapters) settings and configurations on a CPC and save them
 into a config file for partition restore use.
 
+Updated on May 7, 2021 --- Change the weird vNic store style
 Updated on Apr 14, 2021 --- Support Tape links back up
 Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 21 2020 --- Support for NVMe storage group, device number info will record in storage group backup config file, not in the partition config file
@@ -316,43 +317,38 @@ try:
         parBasicCfg['max_mem'] = assertValue(pyObj=parProp, key='maximum-memory')
  
         #vNIC
-        # get vNIC URIs list for target partition
         nicURIs = assertValue(pyObj=parProp, key='nic-uris')
-        # Dictionary to save basic configs for all vNICs on each partition
-        vNICsCfg = dict()
-        i=0
+        vNICsCfg = []
+        
         for nicURI in nicURIs:
-            # Dictionary to save each vNIC configurations
             nicCfg = dict()
-            i+=1
-            #get vNIC properties
             nicProp = getNICProperties(hmc, nicURI=nicURI)
- 
+            
             nicCfg['name'] = assertValue(pyObj=nicProp, key='name')
-            nicCfg['desc'] = assertValue(pyObj=nicProp, key='description').replace("\n", "")
-            nicCfg['devNum'] = assertValue(pyObj=nicProp, key='device-number')
- 
+            nicCfg['description'] = assertValue(pyObj=nicProp, key='description').replace("\n", "")
+            nicCfg['device-number'] = assertValue(pyObj=nicProp, key='device-number')
+            
             # if ssc partition add ssc related vNIC settings
             if assertValue(pyObj=parProp, key='type') == 'ssc':
                 if bool(assertValue(pyObj=nicProp, key='ssc-management-nic')) == True:
-                    nicCfg['sscIPAddrType'] = assertValue(pyObj=nicProp, key='ssc-ip-address-type')
-                    nicCfg['sscIPAddr'] = assertValue(pyObj=nicProp, key='ssc-ip-address')
-                    nicCfg['sscMaskPrefix'] = assertValue(pyObj=nicProp, key='ssc-mask-prefix')
- 
+                    nicCfg['ssc-ip-address-type'] = assertValue(pyObj=nicProp, key='ssc-ip-address-type')
+                    nicCfg['ssc-ip-address'] = assertValue(pyObj=nicProp, key='ssc-ip-address')
+                    nicCfg['ssc-mask-prefix'] = assertValue(pyObj=nicProp, key='ssc-mask-prefix')
                     if assertValue(pyObj=nicProp, key='vlan-id'):
-                        nicCfg['vlanID'] = assertValue(pyObj=nicProp, key='vlan-id')
-            # if backing adapter type is OSD
+                        nicCfg['vlan-id'] = assertValue(pyObj=nicProp, key='vlan-id')
+            
+            # if backing adapter type is OSD, record the adapter and port information
             if assertValue(pyObj=nicProp, key='type') == 'osd':
                 #Get virtual switch properties to retrieve adapter settings.
                 vsProp = getVirtualSwitchProperties(hmc, vsURI=assertValue(pyObj=nicProp, key='virtual-switch-uri'))
                 adapURI = assertValue(pyObj=vsProp, key='backing-adapter-uri')
-                # add adapter port
-                nicCfg['adapPort'] = assertValue(pyObj=vsProp, key='port')
+                # add backing adapter port
+                nicCfg['port'] = assertValue(pyObj=vsProp, key='port')
                 # get backing adapter ID
                 adapProp = getAdapterProperties(hmc, adaURI=adapURI)
-                #nicCfg['adapName'] = assertValue(pyObj=adapProp, key='name')
-                nicCfg['adapID'] = assertValue(pyObj=adapProp, key='adapter-id')
-            vNICsCfg['vNIC'+ str(i)] = nicCfg
+                nicCfg['adapter-id'] = assertValue(pyObj=adapProp, key='adapter-id')
+            
+            vNICsCfg.append(nicCfg)
         parBasicCfg['vNICs'] = vNICsCfg
  
         #Identify HMC version that Storage Group feature was available.
@@ -537,6 +533,9 @@ try:
             elif "mem" in key2:
                 allConfig.set(key1, '#memory')
                 allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+            elif "vNICs" in key2:
+                allConfig.set(key1, '#virtual NICs')
+                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
             elif "sgDevNum" in key2:
                 allConfig.set(key1, '#FCP Storage-Groups')
                 allConfig.set(key1, key2 ,allParsCfg[key1][key2])
@@ -546,11 +545,6 @@ try:
             elif "sgNVMe" in key2:
                 allConfig.set(key1, '#NVMe Storage-Groups')
                 allConfig.set(key1, key2 ,allParsCfg[key1][key2])
-            elif "vNICs" in key2:
-                allConfig.set(key1, '#virtual NICs')
-                for key3 in sorted(allParsCfg[key1][key2].keys()):
-                    for key4 in sorted(allParsCfg[key1][key2][key3].keys()):
-                        allConfig.set(key1, key3 + '_' + key4, allParsCfg[key1][key2][key3][key4])
             elif "vHBAs" in key2:
                 allConfig.set(key1, '#virtual HBAs')
                 for key3 in sorted(allParsCfg[key1][key2].keys()):

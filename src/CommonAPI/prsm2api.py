@@ -2204,6 +2204,26 @@ def getCPCAdaptersList(hmcConn,
 # -------------------- End of getCPCAdaptersList ------------------- #
 # ------------------------------------------------------------------ #
 
+def listAdaptersOfACpc(hmcConn,
+                       cpcID,
+                       query=None
+                       ):
+    log.debug("Entered")
+    uri = WSA_URI_ADAPTERS_CPC % cpcID
+    if query != None:
+        uri += '?' + query
+    try:
+        # list Adapters of a CPC
+        return getHMCObjectList(hmcConn,
+                                uri,
+                                "List Adapters of a CPC",
+                                "adapters",
+                                httpBadStatuses=[400, 404, 409])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("List Adapters of a CPC")
+        raise exc
+    finally:
+        log.debug("Completed")
 # ------------------------------------------------------------------ #
 # ------- Start of getCPCVirtualSwitchesList function -------------- #
 # ------------------------------------------------------------------ #

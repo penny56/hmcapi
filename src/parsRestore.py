@@ -1,6 +1,7 @@
 '''
 Created on Dec 5, 2017
 
+Updated on May 7, 2021 --- Change the weird vNic store style
 Updated on Apr 20, 2021 --- Support for tape links
 Updated on Mar 31, 2021 --- Move to github
 Updated on Aug 25, 2020 --- Support for NVMe storage groups
@@ -132,7 +133,7 @@ PARTITION_API_MAP = {'par_type' : 'type',
                      'proc_num' : ['cp-processors', 'ifl-processors'],
                      'init_mem' : 'initial-memory',
                      'max_mem' : 'maximum-memory',
-                     'vnic' : None,
+                     'vnics' : None,
                      'sgdevnum' : None, 
                      'sgficon' : None,
                      'sgnvme' : None,
@@ -248,7 +249,7 @@ def procSinglePartition(parName):
     try:
         if lock.acquire():
             partitionDict = sectionDict[parName]
-            (parTemp, vnicDict, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict) = createPartitionTemplate(parName, partitionDict)
+            (parTemp, vnicList, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict) = createPartitionTemplate(parName, partitionDict)
             lock.release()
         if lock.acquire():
             partRet = createPartition(hmc, cpcID, parTemp)
@@ -256,8 +257,8 @@ def procSinglePartition(parName):
         if lock.acquire():
             if partRet != None:
                 createPass.append(parName)
-                if len(vnicDict) != 0:
-                    constructVnics(partRet, parName, vnicDict)
+                if len(vnicList) != 0:
+                    constructVnics(partRet, parName, vnicList)
                 if len(sgDevNumDict) != 0:
                     # combine the two steps as one
                     #constructStorageGroups(partRet, parName, sgDevNumDict=sgDevNumDict)
@@ -299,7 +300,7 @@ def createPartitionTemplate(parName, partitionDict):
     iProcNum = None
     iProcType = None
     partitionTempl = dict()
-    vnicDict = dict()
+    vnicList = []
     sgDevNumDict = dict()
     ficonList = []
     nvmeList = []
@@ -362,6 +363,8 @@ def createPartitionTemplate(parName, partitionDict):
                         else:
                             exc = Exception("The procType should either be 'cp' or be 'ifl', other values invalid!")
                             raise exc
+                elif (propertyKey == 'vnics'):
+                    vnicList = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'sgdevnum'):
                     vhbaList = eval(partitionDict[propertyKey])
                     for vhba in vhbaList:
@@ -383,15 +386,9 @@ def createPartitionTemplate(parName, partitionDict):
                     cryptoDict = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'zzbootopt'):
                     bootOptionDict = eval(partitionDict[propertyKey])
-                    
                 else:
-                    # parse vNIC
+                    # Oops
                     pass
-            elif propertyKey == 'vnic':
-                for key in partitionDict.keys():
-                    if re.match('^vnic\d-*', key):
-                        # if the property name is start by vnic***
-                        vnicDict[key] = partitionDict[key]
             else:
                 # the properties that not exist in the config file, it should be optional, or else, it will throw exception while creating partition
                 pass
@@ -399,7 +396,7 @@ def createPartitionTemplate(parName, partitionDict):
     except  Exception as exc:
         print "[EXCEPTION createPartitionTemplate: %s]" %parName, exc
         raise exc
-    return (partitionTempl, vnicDict, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict)
+    return (partitionTempl, vnicList, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict)
 
 # ------------------------------------------------------------------ #
 # ----- End of createPartitionTemplate function -------------------- #
@@ -437,55 +434,44 @@ def createPartition(hmc, cpcID, parTemp):
 # ------------------------------------------------------------------ #
 # ----- Start of constructVnics function --------------------------- #
 # ------------------------------------------------------------------ #
-def constructVnics(partUri, partName, vnicDict):
+def constructVnics(partUri, partName, vnicList):
     global hmc, cpcID
-    vnicNameSet = set()
     partID = partUri.replace('/api/partitions/','')
-    # find how many vNic should we construct
     try:
-        for key in vnicDict.keys():
-            if re.match('.*_name$', key):
-                vnicNameSet.add(key)
-        
-        for vnicName in vnicNameSet:
-            vnicPrefix = vnicName[:5]
-            vnicPrefixDict = dict()
-            for key in vnicDict.keys():
-                pattern = '^'+vnicPrefix
-                if re.match(pattern, key):
-                    vnicPrefixDict[key[6:]] = vnicDict[key]
-            if (vnicPrefixDict.has_key("adapid")):
-                nicTempl = dict()
-                for adapter in getCPCAdaptersList(hmc, cpcID):
-                    if vnicPrefixDict["adapid"] == str(adapter['adapter-id']):
-                        # get the virtual switch according to the given adapter uri (as the vs's backing adapter) and adapter port
-                        vsUri = selectVirtualSwitch(hmc, cpcID, str(adapter['object-uri']), vnicPrefixDict["adapport"])
-                        # create Nic template
-                        nicTempl[NIC_API_MAP['name']] = vnicPrefixDict['name']
-                        nicTempl['virtual-switch-uri'] = vsUri
-                        if vnicPrefixDict.has_key('devnum'):
-                            nicTempl[NIC_API_MAP['devnum']] = vnicPrefixDict['devnum']
-                        if vnicPrefixDict.has_key('desc'):
-                            nicTempl[NIC_API_MAP['desc']] = vnicPrefixDict['desc'] 
-                        # for SSC vNICs, add the ssc properties
-                        if vnicPrefixDict.has_key('sscipaddr'):
-                            nicTempl['ssc-management-nic'] = True
-                            nicTempl[NIC_API_MAP['sscipaddr']] = vnicPrefixDict['sscipaddr']
-                            nicTempl[NIC_API_MAP['sscipaddrtype']] = vnicPrefixDict['sscipaddrtype']
-                            nicTempl[NIC_API_MAP['sscmaskprefix']] = vnicPrefixDict['sscmaskprefix']
-                            if vnicPrefixDict.has_key('vlanid'):
-                                nicTempl[NIC_API_MAP['vlanid']] = int(vnicPrefixDict['vlanid'])
-                                # API doc V2.14.0, This value can not be set when the partition's type is "ssc"
-                                nicTempl['vlan-type'] = None
-                        # create the Nic
-                        nicRet = createNIC(hmc, partID, nicTempl)
-                        print ">>> Create vNIC for %s successfully: Adapter ID: %s" %(partName, vnicPrefixDict["adapid"])
-                        break
-                if not nicTempl:
-                    print ">>> Create vNIC for %s failed: Adapter ID: %s not found in the system." %(partName, vnicPrefixDict["adapid"])
+        for vnicDict in vnicList:
+            if vnicDict.has_key("adapter-id"):                
+                # locate the backing adapter
+                query = 'adapter-id' + '=' + vnicDict["adapter-id"]
+                adapters = listAdaptersOfACpc(hmc, cpcID, query)
+                if len(adapters) == 0:
+                    print ">>> Create vNIC for %s failed: Adapter ID: %s not found in the system." %(partName, vnicDict["adapter-id"])
+                    continue
+                # get the virtual switch uri according to the given adapter uri (as the vs's backing adapter) and adapter port
+                virtual_switch_uri = selectVirtualSwitch(hmc, cpcID, adapters[0]["object-uri"], vnicDict["port"])
+                
+                nicTemp = dict()
+                nicTemp["name"] = vnicDict["name"]
+                nicTemp["description"] = vnicDict["description"]
+                nicTemp["virtual-switch-uri"] = virtual_switch_uri
+                nicTemp["device-number"] = vnicDict["device-number"]
+                
+                if vnicDict.has_key("ssc-ip-address-type"):
+                    nicTemp['ssc-management-nic'] = True
+                    nicTemp["ssc-ip-address-type"] = vnicDict["ssc-ip-address-type"]
+                    nicTemp["ssc-ip-address"] = vnicDict["ssc-ip-address"]
+                    nicTemp["ssc-mask-prefix"] = vnicDict["ssc-mask-prefix"]
+                    if vnicDict.has_key("vlan-id"):
+                        nicTemp["vlan-id"] = vnicDict["vlan-id"]
+                        # API doc V2.14.0, This value can not be set when the partition's type is "ssc"
+                        nicTemp["vlan-type"] = None
+                
+                # create the Nic
+                nicRet = createNIC(hmc, partID, nicTemp)
+                print ">>> Create vNIC for %s successfully: Adapter ID: %s" %(partName, vnicDict["adapter-id"])
             else:
                 # the vNic with the card type is "HiperSockets", not "OSA", don't have the adapter, we don't consider this, just print
-                print ">>> Create vNIC for %s failed: %s, only support OSA card this time" %(partName, vnicPrefixDict["name"])
+                print ">>> Create vNIC for %s failed: %s, only support OSA card this time" %(partName, vnicDict['name'])
+
     except HMCException as exc:
         if exc.httpResponse != None:
             print "[HMCEXCEPTION constructVnics: %s]" %partName, json.loads(exc.httpResponse)['message']
