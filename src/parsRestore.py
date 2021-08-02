@@ -1,6 +1,8 @@
 '''
 Created on Dec 5, 2017
 
+Updated on Jul 30, 2021 --- Add secure boot to partition restore script
+                        --- Comment out the --Adapter-- description field
 Updated on May 7, 2021 --- Change the weird vNic store style
 Updated on Apr 20, 2021 --- Support for tape links
 Updated on Mar 31, 2021 --- Move to github
@@ -128,6 +130,7 @@ SSC_MASTER_PASSWORD = 'passw0rd'
 PARTITION_API_MAP = {'par_type' : 'type',
                      'par_desc' : 'description',
                      'par_reserveresources' : 'reserve-resources',      # boolean
+                     'par_secureboot' : 'secure-boot',
                      'proc_mode' : 'processor-mode',
                      'proc_type' : None,
                      'proc_num' : ['cp-processors', 'ifl-processors'],
@@ -335,6 +338,9 @@ def createPartitionTemplate(parName, partitionDict):
                     partitionTempl[PARTITION_API_MAP[propertyKey]] = partitionDict[propertyKey]
                 elif (propertyKey == 'par_reserveresources'):
                     partitionTempl[PARTITION_API_MAP[propertyKey]] = True if (partitionDict[propertyKey].lower() == 'true') else False
+                # place the secure boot property to bootOptionDict rather than partitionTempl
+                elif (propertyKey == 'par_secureboot'):
+                    bootOptionDict[PARTITION_API_MAP[propertyKey]] = True if (partitionDict[propertyKey].lower() == 'true') else False
                 elif (propertyKey == 'init_mem' or propertyKey == 'max_mem'):
                     if (int(partitionDict[propertyKey]) < 1024):
                         partitionTempl[PARTITION_API_MAP[propertyKey]] = int(partitionDict[propertyKey]) * 1024
@@ -385,7 +391,8 @@ def createPartitionTemplate(parName, partitionDict):
                 elif (propertyKey == 'zcryptos'):
                     cryptoDict = eval(partitionDict[propertyKey])
                 elif (propertyKey == 'zzbootopt'):
-                    bootOptionDict = eval(partitionDict[propertyKey])
+                    # bootOptionDict already exist secure boot property here, so use 'update' method here
+                    bootOptionDict.update(eval(partitionDict[propertyKey]))
                 else:
                     # Oops
                     pass
@@ -728,6 +735,11 @@ def setBootOption(partUri, parName, bootOptionDict):
                 print ">>> Set boot option for", parName,  "successfully!!!"
                 bootTempl2 = dict()
                 bootTempl2['boot-device'] = 'storage-volume'
+                
+                # set the secure boot property
+                if bootOptionDict['secure-boot']:
+                    bootTempl2['secure-boot'] = True
+                
                 updatePartitionProperties(hmcConn=hmc, parURI=partUri, parProp=bootTempl2)
                 return True
             else:
@@ -778,9 +790,9 @@ try:
     cpcID = cpcURI.replace('/api/cpcs/','')
     print ">>> HMC connection created!"
 
-    # restore adapter description field
-    if sectionDict.has_key('--adapter--'):
-        restoreAdapterDescription(sectionDict['--adapter--'])
+    # restore adapter description field (No need to do this)
+    #if sectionDict.has_key('--adapter--'):
+    #    restoreAdapterDescription(sectionDict['--adapter--'])
 
     threads = []
     for parName in sectionDict.keys():
