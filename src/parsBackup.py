@@ -267,8 +267,6 @@ try:
     # Retrieve Processor and Memory settings for all partitions
     for parName in allParNamesList:
         
-        if parName != 'T257-SUSE01': pass
-
         # Dictionary to save basic configs for each partition
         parBasicCfg = dict()
         parIndex = allParNamesList.index(parName)
