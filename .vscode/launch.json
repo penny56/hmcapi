@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "nvmeSG",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/createNVMeStorageGroup.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.135", "-cpc", "A90"],
+            "console": "integratedTerminal"
+        }
+    ]
+}

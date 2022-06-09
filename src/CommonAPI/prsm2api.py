@@ -1479,6 +1479,73 @@ def attachStorageGroup(hmcConn,
 # ------------------------------------------------------------------ #
 
 # ------------------------------------------------------------------ #
+# --------------- Start of detachStorageGroup function ------------- #
+# ------------------------------------------------------------------ #
+def detachStorageGroup(hmcConn,
+                       partID=None,
+                       sgProp=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if partID == None:
+            exc = HMCException("detachStorageGroup",
+                               "you should specify partition ID parameter")
+            raise exc
+        else:
+            if sgProp != None:
+                # Prepare httpbody as JSON
+                httpBody = json.dumps(sgProp)
+                # detach the storage group
+                resp = getHMCObject(hmcConn,
+                                    WSA_URI_DETACH_STORAGE_GROUP % partID,
+                                    "Detach storage group",
+                                    httpMethod=WSA_COMMAND_POST,
+                                    httpBody=httpBody,
+                                    httpGoodStatus=204,           # HTTP created
+                                    httpBadStatuses=[400, 403, 404, 409, 503])
+                return assertValue(pyObj=resp, key='element-uri')
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("detachStorageGroup")
+        raise exc
+    finally:
+        log.debug("detachStorageGroup")
+# ------------------------------------------------------------------ #
+# ----------------- End of detachStorageGroup function ------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------------- Start of deleteStorageGroup function ------------- #
+# ------------------------------------------------------------------ #
+def deleteStorageGroup(hmcConn,
+                       sgID=None
+                       ):
+    log.debug("Entered")
+    try:
+        # check input params
+        if sgID == None:
+            exc = HMCException("deleteStorageGroup",
+                               "you should specify partition ID parameter")
+            raise exc
+        else:
+            # detach the storage group
+            resp = getHMCObject(hmcConn,
+                                WSA_URI_DELETE_STORAGE_GROUP % sgID,
+                                "Delete storage group",
+                                httpMethod=WSA_COMMAND_POST,
+                                httpBody=None,
+                                httpGoodStatus=204,           # HTTP created
+                                httpBadStatuses=[400, 403, 404, 409, 503])
+            return assertValue(pyObj=resp, key='element-uri')
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("deleteStorageGroup")
+        raise exc
+    finally:
+        log.debug("deleteStorageGroup")
+# ------------------------------------------------------------------ #
+# ----------------- End of deleteStorageGroup function ------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
 # ----------------- Start of getNICProperties ---------------------- #
 # ------------------------------------------------------------------ #
 def getNICProperties(hmcConn,
@@ -2317,6 +2384,31 @@ def listVirtualStorageResourcesOfStorageGroup(hmcConn,
 
 # ------------------------------------------------------------------ #
 # ------- End of listVirtualStorageResourcesOfStorageGroup function  #
+# ------------------------------------------------------------------ #
+
+#------------------------------------------------------------------ #
+# ------- Start of getPartitionsForAStorageGroup function---------- #
+# ----------------------------------------------------------------- #
+def getPartitionsForAStorageGroup(hmcConn,
+                                  sgID,
+                                  ):
+    log.debug("Entered")
+    try:
+        # get partition list
+        return getHMCObjectList(hmcConn,
+                                WSA_URI_GET_PARTITIONS_FOR_A_STORAGE_GROUP % sgID,
+                                "Get partitions for a storage group",
+                                "partitions",
+                                httpGoodStatus=200,
+                                httpBadStatuses=[400, 404])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("getPartitionsForAStorageGroup")
+        raise exc
+    finally:
+        log.debug("Completed")
+
+# ------------------------------------------------------------------ #
+# ------- End of getPartitionsForAStorageGroup function ------------ #
 # ------------------------------------------------------------------ #
 
 # ------------------------------------------------------------------ #

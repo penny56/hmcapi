@@ -353,7 +353,13 @@ WSA_URI_LIST_STORAGE_VOLUME = '/api/storage-groups/%s/storage-volumes'
 
 WSA_URI_ATTACH_STORAGE_GROUP = '/api/partitions/%s/operations/attach-storage-group'
 
+WSA_URI_DETACH_STORAGE_GROUP = '/api/partitions/%s/operations/detach-storage-group'
+
+WSA_URI_DELETE_STORAGE_GROUP = '/api/storage-groups/%s/operations/delete'
+
 WSA_URI_LIST_VIRTUAL_STORAGE_RESOURCES = '/api/storage-groups/%s/virtual-storage-resources'
+
+WSA_URI_GET_PARTITIONS_FOR_A_STORAGE_GROUP = '/api/storage-groups/%s/operations/get-partitions'
 
 WSA_URI_REQUEST_STORAGE_GROUP_FULFILLMENT = '/api/storage-groups/%s/operations/request-fulfillment'
 
