@@ -36,7 +36,7 @@ nvmeAdapterName = 'NVMe 0194 B25B-08'
 def parseArgs():
   global hmcHost, cpcName
   global logDir, logLevel, configFilename
-  parser = argparse.ArgumentParser(description='Create a new NIC for partition')
+  parser = argparse.ArgumentParser(description='NVMe storage group regression test.')
   parser.add_argument('-hmc', '--hmc', metavar='<HMC host IP>', help='HMC host IP')
   parser.add_argument('-cpc', '--cpcName', metavar='<cpc name>', help='cpc name')
 
@@ -85,7 +85,7 @@ try:
   parseArgs()
   
   print ("******************************")
-  msg = "Create new NIC in the partition"
+  msg = "NVMe storage group regression test"
   print (msg)
   printParams()
   print ("******************************")
