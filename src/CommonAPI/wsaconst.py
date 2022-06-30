@@ -368,9 +368,16 @@ WSA_URI_LIST_TAPE_LINKS = '/api/tape-links'
 
 WSA_URI_GET_TAPE_LINK_PROPERTIES = '/api/tape-links/%s'
 
-WSA_URI_LIST_TAPE_LIBRARIES = '/api/tape-libraries'
+WSA_URI_MODIFY_TAPE_LINK_PROPERTIES = '/api/tape-links/%s/operations/modify'
 
 WSA_URI_ATTACH_TAPE_LINK = '/api/partitions/%s/operations/attach-tape-link'
+
+WSA_URI_DETACH_TAPE_LINK_FROM_PARTITION = '/api/partitions/%s/operations/detach-tape-link'
+
+WSA_URI_DELETE_TAPE_LINK = '/api/tape-links/%s/operations/delete'
+
+# For Tape libraries
+WSA_URI_LIST_TAPE_LIBRARIES = '/api/tape-libraries'
 
 WSA_URI_GET_TAPE_LIBRARY_PROPERTIES = '/api/tape-libraries/%s'
 

@@ -9,8 +9,8 @@
 # Author: Daniel Wu (yongwubj@cn.ibm.com) at 09/23/2015
 # ------------------------------------------------------------------- #
 
-from wsaconst import *
-from hmcUtils import *
+from CommonAPI.wsaconst import *
+from CommonAPI.hmcUtils import *
 
 import json
 import pickle
@@ -82,7 +82,7 @@ def createHMCConnection(hmcHost=None,       # HMC host name or ip address
     log.debug("Entered")
     keys = HMCs.keys()
     if defHost == None or defHost not in keys:
-        defHost = keys[0]
+        defHost = list(keys)[0]     # python3 update
     if hmcHost == None:
         questMsg = 'Please, select system name'
         warnMsg = 'Available system names are: %s' % keys
@@ -155,7 +155,7 @@ def assertValue(jsonObj=None,
         # check if input object is a JSON object, decode it and return as a python object
         if jsonObj != None:
             try:
-                if jsonObj == {} or jsonObj == [] or jsonObj == '':
+                if jsonObj == {} or jsonObj == [] or jsonObj == '' or jsonObj == b'':
                     decodedObj = None
                 else:
                     decodedObj = json.loads(jsonObj)
@@ -184,7 +184,7 @@ def assertValue(jsonObj=None,
                                  listIndex, len(retObj))
                     else:
                         retObj = retObj[listIndex]
-                if type(retObj) == unicode:
+                if type(retObj) == str:       # no 'unicode' type in Python3 any more
                     retObj = str(retObj)
                 return retObj
             except KeyError as exc:           # no such key in python object
@@ -251,10 +251,10 @@ def getValue(paramName,       # name of parameter to be read
                         value = int(value)
                     # check value ranges
                         if minValue != None and value < minValue:
-                            print 'Valid value for "%s" should be greater than %s' % (paramName, minValue)
+                            print ('Valid value for "%s" should be greater than %s' % (paramName, minValue))
                             continue
                         if maxValue != None and value > maxValue:
-                            print 'Valid value for "%s" should be less than %s' % (paramName, maxValue)
+                            print ('Valid value for "%s" should be less than %s' % (paramName, maxValue))
                             continue
                         return value
                     except:
@@ -265,10 +265,10 @@ def getValue(paramName,       # name of parameter to be read
                         value = float(value)
                     # check value ranges
                         if minValue != None and value < minValue:
-                            print 'Valid value for "%s" should be greater than %s' % (paramName, minValue)
+                            print ('Valid value for "%s" should be greater than %s' % (paramName, minValue))
                             continue
                         if maxValue != None and value > maxValue:
-                            print 'Valid value for "%s" should be less than %s' % (paramName, maxValue)
+                            print ('Valid value for "%s" should be less than %s' % (paramName, maxValue))
                             continue
                         return value
                     except:
@@ -281,7 +281,7 @@ def getValue(paramName,       # name of parameter to be read
 
         # check if value have been converted
             if valueType != None and type(value) != valueType:
-                print 'Valid value for "%s" should have %s type' % (paramName, valueType)
+                print ('Valid value for "%s" should have %s type' % (paramName, valueType))
                 continue
 
             if availValues != None and len(availValues) > 0:
@@ -295,24 +295,24 @@ def getValue(paramName,       # name of parameter to be read
                         selValues += [av]
                 if len(selValues) == 0:
                     if warnMsg != None:   # print special warning message
-                        print warnMsg
+                        print (warnMsg)
                     else:                 # print default warning message
-                        print 'Please select valid value for "%s" from %s' % (paramName, availValues)
+                        print ('Please select valid value for "%s" from %s' % (paramName, availValues))
                     continue
                 elif len(selValues) > 1:
-                    print "Several matches found %s for your input ('%s')." % (selValues, value)
-                    print "Please select one of them."
+                    print ("Several matches found %s for your input ('%s')." % (selValues, value))
+                    print ("Please select one of them.")
                     continue
             # only one value matched
                 value = selValues[0]
         # check value length
             if maxStrLength != None and len(value) > maxStrLength:
-                print 'Length of "%s" value (%s) should be not greater than %s' % (paramName, value, maxStrLength)
+                print ('Length of "%s" value (%s) should be not greater than %s' % (paramName, value, maxStrLength))
                 continue
 
         # print selected value
             if printSelValue and value != defValue:
-                print "%s: %s" % (paramName, value)
+                print ("%s: %s" % (paramName, value))
             return value
     except HMCException as exc:   # raise HMCException
         exc.setMethod("getValue")
@@ -563,21 +563,21 @@ def selectValue(parameterName,
 
     # print table caption
         if printCaption:
-            print "%s" % headLine
-            print "%s" % caption
-            print "%s" % headLine
+            print ("%s" % headLine)
+            print ("%s" % caption)
+            print ("%s" % headLine)
     # print table data
         for i in range(0, lines):
             if useIndexes:
-                print '{0:{width}}'.format("[%d]" % (i + 1), width=len('%d' % lines) + 3),
+                print ('{0:{width}}'.format("[%d]" % (i + 1), width=len('%d' % lines) + 3),)
             for j in range(0, len(keys)):
                 values = availValuesDict[keys[j]]
                 if i >= len(values):
                     val = ''
                 else:
                     val = values[i]
-                print '{0:{width}}'.format("%s" % val, width=maxValuesArray[j]),
-            print ''
+                print ('{0:{width}}'.format("%s" % val, width=maxValuesArray[j]),)
+            print ('')
 
     # prepare warning message if not defined
         if warnMessage == None:
@@ -668,7 +668,7 @@ def getFileName(defFilename,
             if attempts > maxAttempts:
                 errMsg = "Maximum number of attempts[%d] reached. Exiting..." % maxAttempts
 #        log.warn(errMsg)
-                print errMsg
+                print (errMsg)
                 return {KEY_RETURN_STATUS: False,
                         KEY_ERROR_MSG: errMsg}
 
@@ -685,13 +685,13 @@ def getFileName(defFilename,
                 # check file's existence
                 errMsg = "File[%s] doesn't exist. Please, try again.." % filename
 #        log.warn(errMsg)
-                print errMsg
+                print (errMsg)
                 continue
         # check directory access
             if not os.access(filename, accessMode):
                 errMsg = "User has no permission for file[%s]. Please, select another one.." % filename
 #        log.warn(errMsg)
-                print errMsg
+                print (errMsg)
                 continue
         # else (everything was OK) => return selected file name
             break
@@ -723,7 +723,7 @@ def getDirectoryName(defDirectory,
             attempts += 1
             if attempts > maxAttempts:
                 log.warn("Maximum number of attempts[%d] reached. Exiting...", maxAttempts)
-                print "Maximum number of attempts[%d] reached. Exiting..." % maxAttempts
+                print ("Maximum number of attempts[%d] reached. Exiting..." % maxAttempts)
                 return None
 
             dirname = getValue('Directory Name', defDirectory,
@@ -735,7 +735,7 @@ def getDirectoryName(defDirectory,
                 if not createIfNonExist:
                     #          log.warn("Directory [%s] doesn't exist. Please, try again..",
                     #                    dirname)
-                    print "Directory [%s] doesn't exist. Please, try again.." % dirname
+                    print ("Directory [%s] doesn't exist. Please, try again.." % dirname)
                     continue
                 # try to create directory
                 else:
@@ -755,13 +755,13 @@ def getDirectoryName(defDirectory,
             elif not os.path.isdir(dirname):
                 #        log.warn("[%s] is not a directory. Please, try again..",
                 #                  dirname)
-                print "[%s] is not a directory. Please, try again.." % dirname
+                print ("[%s] is not a directory. Please, try again.." % dirname)
                 continue
         # check directory access
             if not os.access(dirname, accessMode):
                 #        log.warn("User have no write permission for directory [%s]. Please, select another one..",
                 #                  dirname)
-                print "User have no write permission for directory [%s]. Please, select another one.." % dirname
+                print ("User have no write permission for directory [%s]. Please, select another one.." % dirname)
                 continue
 
         # else (everything was OK) => return selected directory name
@@ -1524,7 +1524,7 @@ def deleteStorageGroup(hmcConn,
         # check input params
         if sgID == None:
             exc = HMCException("deleteStorageGroup",
-                               "you should specify partition ID parameter")
+                               "you should specify storage group ID parameter")
             raise exc
         else:
             # detach the storage group
@@ -1654,7 +1654,7 @@ def updateNICProperties(hmcConn,
         exc.setMethod("updateNICProperties")
         raise exc
     except Exception as exc:
-        print exc.message
+        print (exc.message)
     finally:
         log.debug("Completed")
         return updateSuccess
@@ -2168,7 +2168,7 @@ def updateAdapterProperties(hmcConn,
         exc.setMethod("updateAdapterProperties")
         raise exc
     except Exception as exc:
-        print exc.message
+        print (exc.message)
     finally:
         log.debug("Completed")
         return updateSuccess
@@ -2447,7 +2447,7 @@ def fulfillFiconStorageVolume(hmcConn,
         updateSuccess = False
         exc.setMethod("fulfillFiconStorageVolume")
         if exc != None:
-            print "[EXCEPTION fulfillFiconStorageVolume] ", exc.httpResponse
+            print ("[EXCEPTION fulfillFiconStorageVolume] ", exc.httpResponse)
         raise exc
     except Exception as exc:
         exc = HMCException("getHMCObject",
@@ -2500,7 +2500,7 @@ def fulfillFiconStorageVolumes(hmcConn,
         updateSuccess = False
         exc.setMethod("fulfillFiconStorageVolumes")
         if exc != None:
-            print "[EXCEPTION fulfillFiconStorageVolumes] ", exc.httpResponse
+            print ("[EXCEPTION fulfillFiconStorageVolumes] ", exc.httpResponse)
         raise exc
     except Exception as exc:
         exc = HMCException("getHMCObject",
@@ -2551,7 +2551,7 @@ def updateVirtualStorageResourceProperties(hmcConn,
         updateSuccess = False
         exc.setMethod("updateVirtualStorageResourceProperties")
         if exc != None:
-            print "[EXCEPTION updateVirtualStorageResourceProperties] ", exc.httpResponse
+            print ("[EXCEPTION updateVirtualStorageResourceProperties] ", exc.httpResponse)
         raise exc
     except Exception as exc:
         exc = HMCException("getHMCObject",
@@ -2635,12 +2635,12 @@ def createStorageGroup(hmc, sgTempl):
                             httpBadStatuses = [400, 403, 404, 409, 503])
         return assertValue(pyObj=resp, key='object-uri')
     except HMCException as exc:   # raise HMCException
-        print "[HMCEXCEPTION createStorageGroup]", exc.message
+        print ("[HMCEXCEPTION createStorageGroup]", exc.message)
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION createStorageGroup]", eval(exc.httpResponse)['message']
+            print ("[HMCEXCEPTION createStorageGroup]", eval(exc.httpResponse)['message'])
         raise exc
     except Exception as exc:
-        print "[EXCEPTION createStorageGroup]", exc
+        print ("[EXCEPTION createStorageGroup]", exc)
         raise exc
 
 # ------------------------------------------------------------------ #
@@ -2667,12 +2667,12 @@ def modifyStorageGroup(hmc, sgID, sgTempl):
         # return assertValue(pyObj=resp, key='object-uri')
         return resp
     except HMCException as exc:   # raise HMCException
-        print "[HMCEXCEPTION modifyStorageGroup]", exc.message
+        print ("[HMCEXCEPTION modifyStorageGroup]", exc.message)
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION modifyStorageGroup]", eval(exc.httpResponse)['message']
+            print ("[HMCEXCEPTION modifyStorageGroup]", eval(exc.httpResponse)['message'])
         raise exc
     except Exception as exc:
-        print "[EXCEPTION modifyStorageGroup]", exc
+        print ("[EXCEPTION modifyStorageGroup]", exc)
         raise exc
 
 # ------------------------------------------------------------------ #
@@ -2723,12 +2723,12 @@ def requestStorageGroupFulfillment(hmc, sgID, sgReqTempl):
                             httpBadStatuses = [400, 403, 404, 409, 503])
         return assertValue(pyObj=resp, key='object-uri')
     except HMCException as exc:   # raise HMCException
-        print "[HMCEXCEPTION requestStorageGroupFulfillment]", exc.message
+        print ("[HMCEXCEPTION requestStorageGroupFulfillment]", exc.message)
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION requestStorageGroupFulfillment]", eval(exc.httpResponse)['message']
+            print ("[HMCEXCEPTION requestStorageGroupFulfillment]", eval(exc.httpResponse)['message'])
         raise exc
     except Exception as exc:
-        print "[EXCEPTION requestStorageGroupFulfillment]", exc
+        print ("[EXCEPTION requestStorageGroupFulfillment]", exc)
         raise exc
 
 # ------------------------------------------------------------------ #
@@ -2912,12 +2912,12 @@ def createTapeLink(hmc, tlTempl):
                             httpBadStatuses = [400, 403, 404, 409, 503])
         return assertValue(pyObj=resp, key='object-uri')
     except HMCException as exc:   # raise HMCException
-        print "[HMCEXCEPTION createTapeLink]", exc.message
+        print ("[HMCEXCEPTION createTapeLink]", exc.message)
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION createTapeLink]", eval(exc.httpResponse)['message']
+            print ("[HMCEXCEPTION createTapeLink]", eval(exc.httpResponse)['message'])
         raise exc
     except Exception as exc:
-        print "[EXCEPTION createTapeLink]", exc
+        print ("[EXCEPTION createTapeLink]", exc)
         raise exc
 
 # ------------------------------------------------------------------ #
@@ -2957,6 +2957,105 @@ def attachTapeLink(hmcConn,
         log.debug("attachTapeLink")
 # ------------------------------------------------------------------ #
 # ----------------- End of attachTapeLink function ----------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ------ Start of detachTapeLinkFromPartition function ------------- #
+# ------------------------------------------------------------------ #
+def detachTapeLinkFromPartition(hmcConn,
+                                partID=None,
+                                tlProp=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if partID == None:
+            exc = HMCException("detachTapeLinkFromPartition",
+                               "you should specify partition ID parameter")
+            raise exc
+        else:
+            if tlProp != None:
+                # Prepare httpbody as JSON
+                httpBody = json.dumps(tlProp)
+                # detach the storage group
+                resp = getHMCObject(hmcConn,
+                                    WSA_URI_DETACH_TAPE_LINK_FROM_PARTITION % partID,
+                                    "Detach Tape Link from Partition",
+                                    httpMethod=WSA_COMMAND_POST,
+                                    httpBody=httpBody,
+                                    httpGoodStatus=204,           # HTTP created
+                                    httpBadStatuses=[400, 403, 404, 409, 503])
+                return assertValue(pyObj=resp, key='element-uri')
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("detachTapeLinkFromPartition")
+        raise exc
+    finally:
+        log.debug("detachTapeLinkFromPartition")
+# ------------------------------------------------------------------ #
+# -------- End of detachTapeLinkFromPartition function ------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------------- Start of modifyTapeLinkProperties function ------- #
+# ------------------------------------------------------------------ #
+def modifyTapeLinkProperties(hmc, tlID, tlTempl):
+    try:
+        # prepare HTTP body as JSON
+        httpBody = json.dumps(tlTempl)
+        # create workload
+        resp = getHMCObject(hmc, 
+                            WSA_URI_MODIFY_TAPE_LINK_PROPERTIES % tlID, 
+                            "Modify Tape Link Properties", 
+                            httpMethod = WSA_COMMAND_POST, 
+                            httpBody = httpBody, 
+                            httpGoodStatus = 204,           # HTTP created
+                            httpBadStatuses = [400, 403, 404, 409, 503])
+        # return assertValue(pyObj=resp, key='object-uri')
+        return resp
+    except HMCException as exc:   # raise HMCException
+        print ("[HMCEXCEPTION modifyTapeLinkProperties]", exc.message)
+        if exc.httpResponse != None:
+            print ("[HMCEXCEPTION modifyTapeLinkProperties]", eval(exc.httpResponse)['message'])
+        raise exc
+    except Exception as exc:
+        print ("[EXCEPTION modifyTapeLinkProperties]", exc)
+        raise exc
+# ------------------------------------------------------------------ #
+# ------- End of modifyTapeLinkProperties function ----------------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# --------------- Start of deleteTapeLink function ----------------- #
+# ------------------------------------------------------------------ #
+def deleteTapeLink(hmcConn,
+                   tlID=None,
+                   tlTempl=None
+                   ):
+    log.debug("Entered")
+    try:
+        # check input params
+        if tlID == None:
+            exc = HMCException("deleteTapeLink",
+                               "you should specify tape link ID parameter")
+            raise exc
+        else:
+            # prepare HTTP body as JSON
+            httpBody = json.dumps(tlTempl)
+            # detach the tape link
+            resp = getHMCObject(hmcConn,
+                                WSA_URI_DELETE_TAPE_LINK % tlID,
+                                "Delete tape link",
+                                httpMethod=WSA_COMMAND_POST,
+                                httpBody=httpBody,
+                                httpGoodStatus=204,           # HTTP created
+                                httpBadStatuses=[400, 403, 404, 409, 503])
+            return assertValue(pyObj=resp, key='element-uri')
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("deleteTapeLink")
+        raise exc
+    finally:
+        log.debug("deleteTapeLink")
+# ------------------------------------------------------------------ #
+# ----------------- End of deleteTapeLink function ----------------- #
 # ------------------------------------------------------------------ #
 
 # ------------------------------------------------------------------ #
@@ -3078,7 +3177,7 @@ def updateVirtualTapeResourceProperties(hmcConn,
         updateSuccess = False
         exc.setMethod("updateVirtualTapeResourceProperties")
         if exc != None:
-            print "[EXCEPTION updateVirtualTapeResourceProperties] ", exc.httpResponse
+            print ("[EXCEPTION updateVirtualTapeResourceProperties] ", exc.httpResponse)
         raise exc
     except Exception as exc:
         exc = HMCException("getHMCObject",

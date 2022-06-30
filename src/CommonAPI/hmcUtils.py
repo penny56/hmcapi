@@ -13,10 +13,10 @@
 
 
 # imports
-from wsaconst import *
-import prsm2api
+from CommonAPI.wsaconst import *
+from CommonAPI import prsm2api
 import logging
-import httplib
+import http.client
 import os
 import time
 import ssl
@@ -42,7 +42,7 @@ class HMCConnection:
     maxAttempts = 5     # default max attempts number to perform HTTP request
     logonAttempts = 1   # number of attempts to do HMC logon
     useHttps = True     # use HTTPS to connect to HMC
-    hmcConn = None      # httplib.HTTPConnection (or HTTPSConnection) object
+    hmcConn = None      # http.client.HTTPConnection (or HTTPSConnection) object
     hmcprops = None     # python object, which contain authenticate data
 
 # API session ID and jms notification topic
@@ -269,12 +269,12 @@ class HMCConnection:
             # create HTTP connection object
             if self.useHttps == True:
                 self.log.debug("Establishing HTTPS connection to HMC %s...", self.hmcAPIHost)
-                self.hmcConn = httplib.HTTPSConnection(self.hmcAPIHost,
+                self.hmcConn = http.client.HTTPSConnection(self.hmcAPIHost,
                                                        self.hmcAPIPort,
                                                        context=ssl._create_unverified_context())  # , timeout=self.httpTimeout)
             else:
                 self.log.debug("Establishing HTTP connection to HMC...")
-                self.hmcConn = httplib.HTTPConnection(self.hmcAPIHost,
+                self.hmcConn = http.client.HTTPConnection(self.hmcAPIHost,
                                                       self.hmcAPIPort)  # , timeout=self.httpTimeout)
 
         # check HMC API version
@@ -333,7 +333,7 @@ class HMCConnection:
         except HMCException as exc:
             origExc = exc.origException
         # do nothing in the case of HTTP exception
-            if not issubclass(type(origExc), httplib.HTTPException):
+            if not issubclass(type(origExc), http.client.HTTPException):
                 exc.printError()
                 raise exc
         finally:
@@ -395,7 +395,7 @@ class HMCConnection:
                     response = self.hmcConn.getresponse()
                     break
             # do re-login in the case of any HTTP or SSLError Exception
-                except (httplib.HTTPException, ssl.SSLError) as exc:
+                except (http.client.HTTPException, ssl.SSLError) as exc:
                     attempts -= 1
                     if attempts > 0:
                         self.log.debug("%s %s (attempts left: %d); %s",
@@ -622,11 +622,11 @@ class HMCException(Exception):
     def getHTTPStatus(self):
         '''
           - Returns HTTPResponse.status code if httpResponse != None
-          - and httplib.OK otherwise
+          - and http.client.OK otherwise
         '''
         if self.httpResponse != None:
             return self.httpResponse.status
-        return httplib.OK
+        return http.client.OK
 
 
 # ------------------------------------------------------------------ #

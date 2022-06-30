@@ -12,6 +12,15 @@
             "python": "${command:python.interpreterPath}",
             "args": ["-hmc", "9.12.35.135", "-cpc", "A90"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "tape link",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/regressionTapeLink.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.135", "-cpc", "T257"],
+            "console": "integratedTerminal"
         }
     ]
 }
