@@ -2,6 +2,7 @@
 This script intends to generally back up Storage Groups configurations on a CPC and save them
 into a config file for later restoration.
 
+Updated on July 20, 2022 --- Py2 to Py3
 Updated on Apr 7, 2021 --- Support Tape links back up
 Updated on Oct 26, 2020 --- Add 'unit-address' property in backup config file, no special use on restore, just record the FICON fulfilled volume ID
 Updated on Aug 6, 2020 --- Support NVMe storage group
@@ -22,9 +23,9 @@ from CommonAPI.readConfig import *
 import CommonAPI.hmcUtils
 import os, sys, datetime, logging, string, argparse, json
 
-# to handle the Non ascii code, transfer python default coding from ascii to utf-8
-reload(sys)
-sys.setdefaultencoding('utf-8')
+# to handle the Non ascii code, transfer python default coding from ascii to utf-8, needed only in Py2
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 # hmc host IP and cpc name 
 hmcHost = None
@@ -75,7 +76,7 @@ def setupLoggers(
         st = checkDirectory(logDir, createIfNonExist=True, silentCreate=True)
         if not st[KEY_RETURN_STATUS]:
             msg = "Logging directory [%s] doesn't exist. Skipping.."%(logDir)
-            print msg
+            print (msg)
         else:
             # prepare file name
             scriptName = os.path.basename(sys.argv[0])
@@ -121,13 +122,13 @@ def parseArgs():
     hmcHost = checkValue('hmcHost', _hmcHost , hmcHost)
     if hmcHost == None:
         msg = "hmc host IP should be provided"
-        print msg
+        print (msg)
     #cpc name
     _cpcName = assertValue(pyObj=args, key='cpcName', listIndex=0, optionalKey=True)
     cpcName = checkValue('cpcName', _cpcName, cpcName)
     if cpcName == None:
         msg = "cpc name should be provided"
-        print msg
+        print (msg)
 
     #Backup directory
     _backupDir = assertValue(pyObj=args, key='backupDir', listIndex=0, optionalKey=True)
@@ -177,10 +178,10 @@ try:
     parseArgs()
     setupLoggers(logDir=logDir, logLevel=logLevel)
     
-    print "*****************************************************"
-    print "Back up all Storage Groups on specified CPC"
+    print ("*****************************************************")
+    print ("Back up all Storage Groups on specified CPC")
     printParams()
-    print "*****************************************************"
+    print ("*****************************************************")
     # initiate hmc connection 
     hmc = createHMCConnection(hmcHost=hmcHost)
     cpc = selectCPC(hmc, cpcName)
@@ -279,17 +280,18 @@ try:
                     bakStorVolCfg['storVolSerNum'] = assertValue(pyObj=sgStorVolProp, key='serial-number')
     
                 # Remove the properties not used
-                for k, v in bakStorVolCfg.items():
+                # Py3 need to add the list() command to avoid dic change in loop
+                for k, v in list(bakStorVolCfg.items()):
                     if v == None: bakStorVolCfg.pop(k)
                 # add above storage volume config to sgStorVolsCfg array.
                 sgStorVolsCfg.append(bakStorVolCfg)
             bakSGCfg['sgStorVolsCfg'] = sgStorVolsCfg
 
-            print "[%s] -> %s storage, back up..." % (sgName, sgStorType)
+            print ("[%s] -> %s storage, back up..." % (sgName, sgStorType))
             # add bakSGCfg to bakSGsCfg
             bakSGsConfig[sgName] = bakSGCfg
         except Exception as exc:
-            if bakSGsConfig.has_key(sgName):
+            if sgName in bakSGsConfig:
                 del bakSGsConfig[sgName]
             bakSGsFailed[sgName] = exc
             continue
@@ -314,16 +316,16 @@ try:
                 tLibProps = getTapeLibraryProperties(hmc, tlURI=tLibUri)
                 bakTLCfg['tape-library-name'] = assertValue(pyObj=tLibProps, key='name')
 
-            print "[%s] -> Tape Link, back up..." % (tlName)
+            print ("[%s] -> Tape Link, back up..." % (tlName))
             # add bakTLCfg to bakTLsCfg
             bakTLsConfig[tlName] = bakTLCfg
         except Exception as exc:
-            if bakTLsConfig.has_key(tlName):
+            if tlName in bakTLsConfig:
                 del bakTLsConfig[tlName]
             bakTLsFailed[tlName] = exc
 
     # Generate backup config file 
-    sgtlConfig = ConfigParser.ConfigParser(allow_no_value=True)
+    sgtlConfig = configparser.ConfigParser(allow_no_value=True)
     
     # For storage groups
     for key1 in sorted(bakSGsConfig.keys()):
@@ -332,32 +334,32 @@ try:
             if bakSGsConfig[key1][key2] != None:
                 if "sgDesc" in key2:
                     sgtlConfig.set(key1, '#Storage Group Description')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "storType" in key2:
                     sgtlConfig.set(key1, '#Storage Group Type')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "sgShared" in key2:
                     sgtlConfig.set(key1, '#Storage Group shared or not')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "sgState" in key2:
                     sgtlConfig.set(key1, '#Storage Group fulfillment state')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "numOfPaths" in key2:
                     sgtlConfig.set(key1, '#Number of paths or adapters')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "maxNumOfPars" in key2:
                     sgtlConfig.set(key1, '#Maximum number of partitions')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
                 elif "sgStorVolsCfg" in key2:
                     sgtlConfig.set(key1, '#Storage volume configs')
-                    sgtlConfig.set(key1, key2 ,bakSGsConfig[key1][key2])
+                    sgtlConfig.set(key1, key2 ,str(bakSGsConfig[key1][key2]))
     
     # For Tape Links
     for key1 in sorted(bakTLsConfig.keys()):
         sgtlConfig.add_section(key1)
         for key2 in sorted(bakTLsConfig[key1].keys()):
             if bakTLsConfig[key1][key2] != None:
-                sgtlConfig.set(key1, key2 ,bakTLsConfig[key1][key2])
+                sgtlConfig.set(key1, key2 ,str(bakTLsConfig[key1][key2]))
 
     # check if backupDir existed or not
     if os.path.exists(backupDir) is False:
@@ -366,26 +368,26 @@ try:
     # Write backup configs into a file
     filePath = backupDir + '/' + cpcName + '-Storages-' + time.strftime("%Y%m%d-%H%M%S", time.localtime()) + '.cfg'
 
-    with open(filePath, 'wb') as configfile:
+    with open(filePath, 'w') as configfile:
         sgtlConfig.write(configfile)
     
     if sgtlConfig :
-        print "\nAbove %s Storage-Groups and Tape-Links on %s were saved into below file successfully."%(len(bakSGsConfig)+len(bakTLsConfig),cpcName)
-        print "%s"%filePath
+        print ("\nAbove %s Storage-Groups and Tape-Links on %s were saved into below file successfully."%(len(bakSGsConfig)+len(bakTLsConfig),cpcName))
+        print ("%s"%filePath)
     else:
-        print "\nStorage Group backup failed, please check the environment by manual"
+        print ("\nStorage Group backup failed, please check the environment by manual")
     
     if bakSGsFailed:
-        print "\nBelow %s Storage-Groups on %s back up failed." %(len(bakSGsFailed),cpcName)
+        print ("\nBelow %s Storage-Groups on %s back up failed." %(len(bakSGsFailed),cpcName))
         for k, v in bakSGsFailed.items():
-            print "[%s] -> reason: %s" %(k, v)
+            print ("[%s] -> reason: %s" %(k, v))
     if bakTLsFailed:
-        print "\nBelow %s Tape-Links on %s back up failed." %(len(bakTLsFailed),cpcName)
+        print ("\nBelow %s Tape-Links on %s back up failed." %(len(bakTLsFailed),cpcName))
         for k, v in bakTLsFailed.items():
-            print "[%s] -> reason: %s" %(k, v)
+            print ("[%s] -> reason: %s" %(k, v))
     
 except Exception as exc:
-    print exc
+    print (exc)
   
 finally:
     # cleanup

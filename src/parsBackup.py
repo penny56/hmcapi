@@ -2,6 +2,7 @@
 This script intends to back up general partition (and adapters) settings and configurations on a CPC and save them
 into a config file for partition restore use.
 
+Updated on July 20, 2022 --- Py2 to Py3
 Updated on May 7, 2021 --- Change the weird vNic store style
 Updated on Apr 14, 2021 --- Support Tape links back up
 Updated on Mar 31, 2021 --- Move to github
@@ -31,8 +32,9 @@ import CommonAPI.hmcUtils
 import os, sys, datetime, logging, string, argparse
 
 # to handle the Non ascii code, transfer python default coding from ascii to utf-8
-reload(sys)
-sys.setdefaultencoding('utf-8')
+# need only in Py2
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 # General params
 hmcHost = None
@@ -83,7 +85,7 @@ def setupLoggers(
         st = checkDirectory(logDir, createIfNonExist=True, silentCreate=True)
         if not st[KEY_RETURN_STATUS]:
             msg = "Logging directory [%s] doesn't exist. Skipping.."%(logDir)
-            print msg
+            print (msg)
         else:
             # prepare file name
             scriptName = os.path.basename(sys.argv[0])
@@ -129,13 +131,13 @@ def parseArgs():
     hmcHost = checkValue('hmcHost', _hmcHost , hmcHost)
     if hmcHost == None:
         msg = "hmc host IP should be provided"
-        print msg
+        print (msg)
     #cpc name
     _cpcName = assertValue(pyObj=args, key='cpcName', listIndex=0, optionalKey=True)
     cpcName = checkValue('cpcName', _cpcName, cpcName)
     if cpcName == None:
         msg = "cpc name should be provided"
-        print msg
+        print (msg)
 
     #Backup directory
     _backupDir = assertValue(pyObj=args, key='backupDir', listIndex=0, optionalKey=True)
@@ -156,15 +158,15 @@ def parseArgs():
 # ------------------------------------------------------------------ #
 def printParams():
     global backupDir
-    print("\tParameters were input:")
-    print("\tHMC system IP\t%s"%hmcHost)
-    print("\tCPC name\t\t%s"%cpcName)
+    print ("\tParameters were input:")
+    print ("\tHMC system IP\t%s"%hmcHost)
+    print ("\tCPC name\t\t%s"%cpcName)
     if backupDir:
-        print("\tBackup Directory --> %s"%backupDir)
+        print ("\tBackup Directory --> %s"%backupDir)
     else:
         currentPath = os.getcwd()
         backupDir = currentPath
-        print("\tBackup Directory --> %s"%currentPath)
+        print ("\tBackup Directory --> %s"%currentPath)
 # ------------------------------------------------------------------ #
 # --------- End of printParams function ---------------------------- #
 # ------------------------------------------------------------------ #
@@ -185,10 +187,10 @@ try:
     parseArgs()
     setupLoggers(logDir=logDir, logLevel=logLevel)
 
-    print "********************************************************"
-    print "Back up basic configs for all partitions on specified CPC"
+    print ("********************************************************")
+    print ("Back up basic configs for all partitions on specified CPC")
     printParams()
-    print "********************************************************"
+    print ("********************************************************")
 
     # Access HMC system and create HMC connection
     hmc = createHMCConnection(hmcHost=hmcHost)
@@ -496,7 +498,7 @@ try:
  
         parBasicCfg['zzBootOpt'] = bootOptCfg
  
-        print "%s backup is Done."%parName
+        print ("%s backup is Done."%parName)
         #fill allParsCfg dictionary
         allParsCfg[parName] = parBasicCfg
 
@@ -517,54 +519,54 @@ try:
         adapterDict[adaProp['adapter-id']] = adaKeyProp
 
     # Generate backup config file
-    allConfig = ConfigParser.ConfigParser(allow_no_value=True)
+    allConfig = configparser.ConfigParser(allow_no_value=True)
     # 1. partition part
     for key1 in sorted(allParsCfg.keys()):
         allConfig.add_section(key1)
         for key2 in sorted(allParsCfg[key1].keys()):
             if "par" in key2:
                 allConfig.set(key1, '#partition')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "proc" in key2:
                 allConfig.set(key1, '#processor')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "mem" in key2:
                 allConfig.set(key1, '#memory')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "vNICs" in key2:
                 allConfig.set(key1, '#virtual NICs')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "sgDevNum" in key2:
                 allConfig.set(key1, '#FCP Storage-Groups')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "sgFICON" in key2:
                 allConfig.set(key1, '#FICON Storage-Groups')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "sgNVMe" in key2:
                 allConfig.set(key1, '#NVMe Storage-Groups')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "vHBAs" in key2:
                 allConfig.set(key1, '#virtual HBAs')
                 for key3 in sorted(allParsCfg[key1][key2].keys()):
                     for key4 in sorted(allParsCfg[key1][key2][key3].keys()):
-                        allConfig.set(key1, key3 + '_' + key4, allParsCfg[key1][key2][key3][key4])
+                        allConfig.set(key1, key3 + '_' + key4, str(allParsCfg[key1][key2][key3][key4]))
             elif "tapelink" in key2:
                 allConfig.set(key1, '#Tape Links')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "zAccelerators" in key2:
                 allConfig.set(key1, '#accelerator virtual functions')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "zCryptos" in key2:
                 allConfig.set(key1, '#cryptos')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
             elif "zzBootOpt" in key2:
                 allConfig.set(key1, '#boot option')
-                allConfig.set(key1, key2 ,allParsCfg[key1][key2])
+                allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
     # 2. adapter part
     allConfig.add_section('--adapter--')
     for key in sorted(adapterDict.keys()):
-        allConfig.set('--adapter--', key, adapterDict[key])
-    print "Adapters backup is Done."
+        allConfig.set('--adapter--', key, str(adapterDict[key]))
+    print ("Adapters backup is Done.")
     
     # check if backupDir existed or not
     if os.path.exists(backupDir) is False:
@@ -573,19 +575,19 @@ try:
     # Write backup configs into a file
     filePath = backupDir + '/' + cpcName + '-Partitions-' + time.strftime("%Y%m%d-%H%M%S", time.localtime()) + '.cfg'
 
-    with open(filePath, 'wb') as configfile:
+    with open(filePath, 'w') as configfile:
         allConfig.write(configfile)
 
     if allConfig :
         print ("\n%s partitions' and adapters' configuration data are saved in below file successfully."%cpcName)
-        print filePath
+        print (filePath)
     else:
-        print "Partition and adapters backup failed, please check the environment manually."
+        print ("Partition and adapters backup failed, please check the environment manually.")
 
 except Exception as exc:
-    print exc
+    print (exc)
     if exc.message != None:
-        print exc.message
+        print (exc.message)
 
 finally:
     # cleanup

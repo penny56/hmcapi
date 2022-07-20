@@ -12,7 +12,8 @@
 
 
 # imports
-import ConfigParser
+# import ConfigParser     # for py2
+import configparser     # for py3
 
 
 #############################################################################
@@ -48,7 +49,8 @@ def readConfig(
         exc = IOError("Empty file or directory name")
         exc.errno = 2
         raise exc
-    config = ConfigParser.ConfigParser()
+    # config = ConfigParser.ConfigParser()    # py2
+    config = configparser.ConfigParser()    # py3
     config.readfp(open(fileName))
     sections = config.sections()
 # walk through sections

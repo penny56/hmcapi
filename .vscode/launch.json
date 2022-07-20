@@ -21,6 +21,24 @@
             "python": "${command:python.interpreterPath}",
             "args": ["-hmc", "9.12.35.135", "-cpc", "T257"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "sg back t257",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/sgBackup.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.134", "-cpc", "T257"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "partition back t257",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/parsBackup.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.134", "-cpc", "T257"],
+            "console": "integratedTerminal"
         }
     ]
 }
