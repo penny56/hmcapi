@@ -1,4 +1,4 @@
-# prsm2
+# hmcapi
 Move prsm2 from managed by cvs to github. This repository mainly contains backup/restore script and some other test tools.
 
 The login information located in ./src/CommonAPI/hmcapi.properties
