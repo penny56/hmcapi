@@ -2811,8 +2811,6 @@ def getStorageControlUnitProperties(hmcConn=None,
 # ------------------------------------- For FCP Tape Link -------------------------------- #
 # ---------------------------------------------------------------------------------------- #
 
-
-
 # ------------------------------------------------------------------ #
 # ------- Start of listTapeLinks function -------------------------- #
 # ------------------------------------------------------------------ #
@@ -2857,7 +2855,7 @@ def getTapeLinkProperties(hmcConn,
             exc = HMCException("getTapeLinkProperties",
                                "You should specify either tlID or tlURI parameters")
             raise exc
-        # get partition properties
+        # get tape link properties
         return getHMCObject(hmcConn, 
                             URI,
                             "Get Tape Link Properties")
@@ -3189,4 +3187,100 @@ def updateVirtualTapeResourceProperties(hmcConn,
         return updateSuccess
 # ------------------------------------------------------------------ #
 # ----------- End of updateVirtualTapeResourceProperties function #
+# ------------------------------------------------------------------ #
+
+# ---------------------------------------------------------------------------------------- #
+# ------------------------------------- For Partition Link ------------------------------- #
+# ---------------------------------------------------------------------------------------- #
+
+# ------------------------------------------------------------------ #
+# ------- Start of listPartitionLinks function --------------------- #
+# ------------------------------------------------------------------ #
+def listPartitionLinks(hmcConn,
+                       query=None
+                       ):
+    log.debug("Entered")
+    uri = WSA_URI_LIST_PARTITION_LINKS
+    if query != None:
+        uri += '?' + query
+    try:
+        # list Partition Links
+        return getHMCObjectList(hmcConn,
+                                uri,
+                                "List Partition Links",
+                                "partition-links",
+                                httpBadStatuses=[400])
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("List Partition Links")
+        raise exc
+    finally:
+        log.debug("Completed")
+
+# ------------------------------------------------------------------ #
+# ------- End of listPartitionLinks function ----------------------- #
+# ------------------------------------------------------------------ #
+
+
+# ------------------------------------------------------------------ #
+# --------- Start of getPartitionLinkProperties function ----------- #
+# ------------------------------------------------------------------ #
+def getPartitionLinkProperties(hmcConn,
+                               plID=None,
+                               plURI=None):
+    log.debug("Entered")
+    try:
+        # check input params
+        if plID != None:
+            URI = WSA_URI_GET_PARTITION_LINK_PROPERTIES % plID
+        elif plURI != None:
+            URI = plURI
+        else:
+            exc = HMCException("getPartitionLinkProperties",
+                               "You should specify either plID or plURI parameters")
+            raise exc
+        # get partition link properties
+        return getHMCObject(hmcConn, 
+                            URI,
+                            "Get Partition Link Properties")
+    except HMCException as exc:   # raise HMCException
+        exc.setMethod("getPartitionLinkProperties")
+        raise exc
+    finally:
+        log.debug("Completed")
+# ------------------------------------------------------------------ #
+# ----------- End of getPartitionLinkProperties function ----------- #
+# ------------------------------------------------------------------ #
+
+# ------------------------------------------------------------------ #
+# ----- Start of createPartitionLink function ---------------------- #
+# ------------------------------------------------------------------ #
+def createPartitionLink(hmc, plTempl):
+    try:
+        # prepare HTTP body as JSON
+        httpBody = json.dumps(plTempl)
+        # create workload
+        '''
+        a 202 (Accepted) status code is sent as soon as the new partition link
+        object has been created, but before the partitions specified in the bus-connections field are attached
+        to it.
+        '''
+        resp = getHMCObject(hmc, 
+                            WSA_URI_LIST_PARTITION_LINKS, 
+                            "Create Partition Link", 
+                            httpMethod = WSA_COMMAND_POST, 
+                            httpBody = httpBody, 
+                            httpGoodStatus = 202,           # HTTP created
+                            httpBadStatuses = [400, 403, 404, 409, 503])
+        return assertValue(pyObj=resp, key='job-uri')
+    except HMCException as exc:   # raise HMCException
+        print ("[HMCEXCEPTION createPartitionLink]", exc.message)
+        if exc.httpResponse != None:
+            print ("[HMCEXCEPTION createPartitionLink]", eval(exc.httpResponse)['message'])
+        raise exc
+    except Exception as exc:
+        print ("[EXCEPTION createPartitionLink]", exc)
+        raise exc
+
+# ------------------------------------------------------------------ #
+# ----- End of createPartitionLink function ------------------------ #
 # ------------------------------------------------------------------ #

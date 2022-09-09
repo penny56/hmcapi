@@ -39,6 +39,24 @@
             "python": "${command:python.interpreterPath}",
             "args": ["-hmc", "9.12.35.134", "-cpc", "T257"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "partition back a90",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/parsBackup.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.135", "-cpc", "A90"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "part restore a90",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/parsRestore.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.135", "-cpc", "A90", "-config", "${workspaceFolder}/A90-pl.cfg"],
+            "console": "integratedTerminal"
         }
     ]
 }

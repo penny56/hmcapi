@@ -2,6 +2,7 @@
 This script intends to back up general partition (and adapters) settings and configurations on a CPC and save them
 into a config file for partition restore use.
 
+Updated on Sept 6, 2022 -- Support partition links
 Updated on July 20, 2022 --- Py2 to Py3
 Updated on May 7, 2021 --- Change the weird vNic store style
 Updated on Apr 14, 2021 --- Support Tape links back up
@@ -502,6 +503,13 @@ try:
         #fill allParsCfg dictionary
         allParsCfg[parName] = parBasicCfg
 
+    # backup the partition link information
+    plDict = dict()
+    query = 'cpc-uri' + '=' + cpcURI
+    for plObj in listPartitionLinks(hmc, query):
+        plProp = getPartitionLinkProperties(hmc, plURI=plObj['object-uri'])
+        plDict[plProp['object-id']] = plProp
+
     # backup the adapter information (description)
     adapterDict = dict()
     for adaDict in getCPCAdaptersList(hmc, cpcID):
@@ -562,12 +570,18 @@ try:
             elif "zzBootOpt" in key2:
                 allConfig.set(key1, '#boot option')
                 allConfig.set(key1, key2 ,str(allParsCfg[key1][key2]))
-    # 2. adapter part
+
+    # 2. partition link part
+    allConfig.add_section('--partitionlink--')
+    for key in plDict.keys():
+        allConfig.set('--partitionlink--', key, str(plDict[key]))
+
+    # 3. adapter part
     allConfig.add_section('--adapter--')
     for key in sorted(adapterDict.keys()):
         allConfig.set('--adapter--', key, str(adapterDict[key]))
     print ("Adapters backup is Done.")
-    
+
     # check if backupDir existed or not
     if os.path.exists(backupDir) is False:
         os.makedirs(backupDir)

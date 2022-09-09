@@ -383,6 +383,11 @@ WSA_URI_GET_TAPE_LIBRARY_PROPERTIES = '/api/tape-libraries/%s'
 
 WSA_URI_LIST_VIRTUAL_TAPE_RESOURCES_OF_A_TAPE_LINK = '%s/virtual-tape-resources'
 
+# For Partition list
+WSA_URI_LIST_PARTITION_LINKS = '/api/partition-links'
+
+WSA_URI_GET_PARTITION_LINK_PROPERTIES = '/api/partition-links/%s'
+
 #############################################################################
 # Testcase exit return codes
 #############################################################################

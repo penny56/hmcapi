@@ -1,6 +1,7 @@
 '''
 Created on Dec 5, 2017
 
+Updared on Sep 7, 2022 --- Support for Partition link and py2 to py3
 Updated on Jul 30, 2021 --- Add secure boot to partition restore script
                         --- Comment out the --Adapter-- description field
 Updated on May 7, 2021 --- Change the weird vNic store style
@@ -104,11 +105,11 @@ zzbootopt = {'fcp-boot-configuration-selector': 0, 'fcp-volume-uuid': '001738003
 from CommonAPI.prsm2api import *
 from CommonAPI.wsaconst import *
 import CommonAPI.hmcUtils
-import sys, ConfigParser, logging, threading, os, argparse, traceback, re
+import sys, configparser, logging, threading, os, argparse, traceback, re
 
-# to handle the Non ascii code, transfer python default coding from ascii to utf-8
-reload(sys)
-sys.setdefaultencoding('utf-8')
+# to handle the Non ascii code, transfer python default coding from ascii to utf-8, but only need for py3
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 hmc = None
 cpcID = None
@@ -174,7 +175,7 @@ lock = threading.Lock()
 # ----- Start of parseArgs function -------------------------------- #
 # ------------------------------------------------------------------ #
 def parseArgs():
-    print ">>> parsing the input parameters..."
+    print (">>> parsing the input parameters...")
     global hmcHost, cpcName, configFile
     
     parser = argparse.ArgumentParser(description='create partitions by configure file')
@@ -200,10 +201,10 @@ def parseArgs():
             exc = Exception("You should specify the configure file name / path")
             raise exc
     except Exception as exc:
-        print "[EXCEPTION parseArgs] Mandatory parameter missed:", exc 
+        print ("[EXCEPTION parseArgs] Mandatory parameter missed:", exc)
         raise exc
     finally:
-        print ">>> Parsing parameters complete!"
+        print (">>> Parsing parameters complete!")
 
 # ------------------------------------------------------------------ #
 # ----- End of parseArgs function ---------------------------------- #
@@ -213,7 +214,7 @@ def parseArgs():
 # ----- Start of loadConfig function ------------------------------- #
 # ------------------------------------------------------------------ #
 def loadConfig(configFile):
-    print ">>> loading the config file..."
+    print (">>> loading the config file...")
     global sectionDict
     
     try:
@@ -223,8 +224,8 @@ def loadConfig(configFile):
             raise exc
         if '/' not in configFile:
             configFile = os.path.join(sys.path[0], configFile)
-        config = ConfigParser.RawConfigParser()
-        config.readfp(open(configFile))
+        config = configparser.RawConfigParser()
+        config.readfp(open(configFile))   # deprecated, use parser.read_file(readline_generator(fp)).
         
         sections = config.sections()
         for section in sections:
@@ -235,10 +236,10 @@ def loadConfig(configFile):
             sectionDict[section] = itemDict
 
     except IOError as exc:
-        print ">>> [EXCEPTION loadConfig] Cannot load configuration file [%s]: %s"%(configFile, exc)  
+        print (">>> [EXCEPTION loadConfig] Cannot load configuration file [%s]: %s"%(configFile, exc))
         raise exc
     finally:
-        print ">>> loading config file complete!"
+        print (">>> loading config file complete!")
 
 # ------------------------------------------------------------------ #
 # ----- End of loadConfig function --------------------------------- #
@@ -284,7 +285,7 @@ def procSinglePartition(parName):
                 createFail.append(parName)
             lock.release()
     except Exception as exc: 
-        print "[EXCEPTION procSinglePartition] partition", parName
+        print ("[EXCEPTION procSinglePartition] partition", parName)
         print
 
         # no need to add "if lock.acquire():" here since the lock must be occupied, just release.
@@ -316,13 +317,13 @@ def createPartitionTemplate(parName, partitionDict):
         partitionTempl['name'] = parName
         # retrieve all the fields we want, to product a partition
         for propertyKey in PARTITION_API_MAP.keys():
-            if partitionDict.has_key(propertyKey):
+            if propertyKey in partitionDict:
                 # the config file section include this property
                 if (propertyKey == 'par_type'): 
                     partitionTempl[PARTITION_API_MAP[propertyKey]] = partitionDict[propertyKey]
                     if (partitionDict[propertyKey] == "ssc"):
                         for sscKey in SSC_API_MAP.keys():
-                            if partitionDict.has_key(sscKey):
+                            if sscKey in partitionDict:
                                 if sscKey == 'par_sscdns':
                                     # par_sscdns is a String Array
                                     partitionTempl[SSC_API_MAP[sscKey]] = partitionDict[sscKey].split(',')
@@ -376,7 +377,7 @@ def createPartitionTemplate(parName, partitionDict):
                     for vhba in vhbaList:
                         # e.g. vhba = 'M90_KVMT02_XIV_Dedicated_SG:9000'
                         vhbaProp = vhba.split(':')
-                        if sgDevNumDict.has_key(vhbaProp[0]):
+                        if vhbaProp[0] in sgDevNumDict:
                             sgDevNumDict[vhbaProp[0]].append(vhbaProp[1])
                         else:
                             sgDevNumDict[vhbaProp[0]] = [vhbaProp[1]]
@@ -401,7 +402,7 @@ def createPartitionTemplate(parName, partitionDict):
                 pass
         
     except  Exception as exc:
-        print "[EXCEPTION createPartitionTemplate: %s]" %parName, exc
+        print ("[EXCEPTION createPartitionTemplate: %s]" %parName, exc)
         raise exc
     return (partitionTempl, vnicList, sgDevNumDict, ficonList, nvmeList, tlDict, acceList, cryptoDict, bootOptionDict)
 
@@ -426,12 +427,12 @@ def createPartition(hmc, cpcID, parTemp):
                             httpBadStatuses = [400, 403, 404, 409, 503])
         return assertValue(pyObj=resp, key='object-uri')
     except HMCException as exc:   # raise HMCException
-        print "[HMCEXCEPTION createPartition: %s]" %parTemp['name'], exc.message
+        print ("[HMCEXCEPTION createPartition: %s]" %parTemp['name'], exc.message)
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION createPartition: %s]" %parTemp['name'], eval(exc.httpResponse)['message']
+            print ("[HMCEXCEPTION createPartition: %s]" %parTemp['name'], eval(exc.httpResponse)['message'])
         raise exc
     except Exception as exc:
-        print "[EXCEPTION createPartition: %s]" %parTemp['name'], exc
+        print ("[EXCEPTION createPartition: %s]" %parTemp['name'], exc)
         raise exc
 
 # ------------------------------------------------------------------ #
@@ -446,12 +447,12 @@ def constructVnics(partUri, partName, vnicList):
     partID = partUri.replace('/api/partitions/','')
     try:
         for vnicDict in vnicList:
-            if vnicDict.has_key("adapter-id"):                
+            if "adapter-id" in vnicDict:                
                 # locate the backing adapter
                 query = 'adapter-id' + '=' + vnicDict["adapter-id"]
                 adapters = listAdaptersOfACpc(hmc, cpcID, query)
                 if len(adapters) == 0:
-                    print ">>> Create vNIC for %s failed: Adapter ID: %s not found in the system." %(partName, vnicDict["adapter-id"])
+                    print (">>> Create vNIC for %s failed: Adapter ID: %s not found in the system." %(partName, vnicDict["adapter-id"]))
                     continue
                 # get the virtual switch uri according to the given adapter uri (as the vs's backing adapter) and adapter port
                 virtual_switch_uri = selectVirtualSwitch(hmc, cpcID, adapters[0]["object-uri"], vnicDict["port"])
@@ -462,30 +463,29 @@ def constructVnics(partUri, partName, vnicList):
                 nicTemp["virtual-switch-uri"] = virtual_switch_uri
                 nicTemp["device-number"] = vnicDict["device-number"]
                 
-                if vnicDict.has_key("ssc-ip-address-type"):
+                if "ssc-ip-address-type" in vnicDict:
                     nicTemp['ssc-management-nic'] = True
                     nicTemp["ssc-ip-address-type"] = vnicDict["ssc-ip-address-type"]
                     nicTemp["ssc-ip-address"] = vnicDict["ssc-ip-address"]
                     nicTemp["ssc-mask-prefix"] = vnicDict["ssc-mask-prefix"]
-                    if vnicDict.has_key("vlan-id"):
+                    if "vlan-id" in vnicDict:
                         nicTemp["vlan-id"] = vnicDict["vlan-id"]
                         # API doc V2.14.0, This value can not be set when the partition's type is "ssc"
                         nicTemp["vlan-type"] = None
                 
                 # create the Nic
                 nicRet = createNIC(hmc, partID, nicTemp)
-                print ">>> Create vNIC for %s successfully: Adapter ID: %s" %(partName, vnicDict["adapter-id"])
+                print (">>> Create vNIC for %s successfully: Adapter ID: %s" %(partName, vnicDict["adapter-id"]))
             else:
                 # the vNic with the card type is "HiperSockets", not "OSA", don't have the adapter, we don't consider this, just print
-                print ">>> Create vNIC for %s failed: %s, only support OSA card this time" %(partName, vnicDict['name'])
+                print (">>> Create vNIC for %s failed: %s, only support OSA card this time" %(partName, vnicDict['name']))
 
     except HMCException as exc:
         if exc.httpResponse != None:
-            print "[HMCEXCEPTION constructVnics: %s]" %partName, json.loads(exc.httpResponse)['message']
-        print "[HMCEXCEPTION constructVnics: %s] exc.message: " %partName, exc.message
-        print "[HMCEXCEPTION constructVnics: %s] vNic template: " %partName, nicTempl
+            print ("[HMCEXCEPTION constructVnics: %s]" %partName, json.loads(exc.httpResponse)['message'])
+        print ("[HMCEXCEPTION constructVnics: %s] exc.message: " %partName, exc.message)
     except Exception as exc:
-        print "[EXCEPTION constructVnics: %s] Create vNIC failed" %partName, exc.message
+        print ("[EXCEPTION constructVnics: %s] Create vNIC failed" %partName, exc.message)
 
 # ------------------------------------------------------------------ #
 # ----- End of constructVnics function ----------------------------- #
@@ -520,14 +520,14 @@ def constructStorageGroupsAndSetDevNum(partUri, parName, sgDevNumDict=None, fico
             sgTempl = dict()
             sgTempl['storage-group-uri'] = sgUri
             sgRet = attachStorageGroup(hmc, partID, sgTempl)
-            print ">>> Construct storage group for %s successfully: %s" %(parName, sgName)
+            print (">>> Construct storage group for %s successfully: %s" %(parName, sgName))
             
             # set device number for FCP storage group
             if sgDevNumDict != None:
                 setDeviceNumber(partUri, parName, sgName, sgDevNumDict)
 
     except Exception as exc:
-        print "[EXCEPTION constructStorageGroups: %s] Attach storage group: %s failed!" %(partName, sgName), exc.message
+        print ("[EXCEPTION constructStorageGroups: %s] Attach storage group: %s failed!" %(parName, sgName), exc.message)
 
 # ------------------------------------------------------------------ #
 # ----- End of constructStorageGroups function --------------------- #
@@ -549,9 +549,9 @@ def constructTapelinks(partUri, parName, tlDict):
             attachTapeLink(hmc, partID, tlTempl)
             if devnumList != None:
                 setTapeLinkDeviceNumber(partUri, parName, tls[0]['object-uri'], tlName, devnumList)
-        print ">>> Construct tape link for %s successfully: %s" %(parName, tlDict.keys())
+        print (">>> Construct tape link for %s successfully: %s" %(parName, tlDict.keys()))
     except Exception as exc:
-        print "[EXCEPTION constructTapelinks: %s] Construct tape links: %s failed!" %(parName, tlDict.keys()), exc.message
+        print ("[EXCEPTION constructTapelinks: %s] Construct tape links: %s failed!" %(parName, tlDict.keys()), exc.message)
 
 # ----- obsoleted in DPM R4.2 ----- #
 def constructAccelerators(partUri, parName, acceList):
@@ -563,12 +563,12 @@ def constructAccelerators(partUri, parName, acceList):
             # change the adapter-name to the adapter-uri in the dict
             adapterName = acceDict.pop('adapter-name')
             # adapterUri = selectAdapter(hmc, adapterName, cpcID)[KEY_ADAPTER_URI]
-            acceDict['adapter-uri'] = adapterUri
+            # acceDict['adapter-uri'] = adapterUri
             
             vfRet = createVirtualFunction(hmc, partID, acceDict)
-            print ">>> Construct accelerator virtual function for %s successfully: %s" %(parName, acceDict['name'])
+            print (">>> Construct accelerator virtual function for %s successfully: %s" %(parName, acceDict['name']))
     except Exception as exc:
-        print "[EXCEPTION constructAccelerators: %s] Construct accelerator: % failed!" %(parName, acceDict['name']), exc.message
+        print ("[EXCEPTION constructAccelerators: %s] Construct accelerator: % failed!" %(parName, acceDict['name']), exc.message)
         
 
 def constructCryptos(partUri, parName, cryptoDict):
@@ -587,9 +587,9 @@ def constructCryptos(partUri, parName, cryptoDict):
                     break
         cryptoDict['crypto-adapter-uris'] = adapterUriList
         increaseCryptoConfiguration(hmc, partID, cryptoDict)
-        print ">>> Construct cryptos for %s successfully: %s" %(parName, adapterIDList)
+        print (">>> Construct cryptos for %s successfully: %s" %(parName, adapterIDList))
     except Exception as exc:
-        print "[EXCEPTION constructCryptos: %s] Construct cryptos: %s failed!" %(parName, adapterIDList), exc.message
+        print ("[EXCEPTION constructCryptos: %s] Construct cryptos: %s failed!" %(parName, adapterIDList), exc.message)
 
 
 # ------------------------------------------------------------------ #
@@ -611,7 +611,7 @@ def setDeviceNumber(partUri, parName, sgName, sgDevNumDict):
             if vsr['partition-uri'] == partUri:
                 if str(vsr['device-number']) in sgDevNumDict[sgName]:
                     sgDevNumDict[sgName].remove(str(vsr['device-number']))
-                    print ">>> Set device number for %s already exist: %s, no need to set" %(sgName, str(vsr['device-number']))
+                    print (">>> Set device number for %s already exist: %s, no need to set" %(sgName, str(vsr['device-number'])))
                 else:
                     uniqueVsrList.append(vsr)
         
@@ -633,10 +633,10 @@ def setDeviceNumber(partUri, parName, sgName, sgDevNumDict):
             # exception will occur due to no item could be pop out
             vsrTempl['device-number'] = sgDevNumDict[sgName].pop()
             if updateVirtualStorageResourceProperties(hmc, str(uniVsr['element-uri']), vsrTempl):
-                print ">>> Set device number for %s successfully: %s" %(sgName, vsrTempl['device-number'])
+                print (">>> Set device number for %s successfully: %s" %(sgName, vsrTempl['device-number']))
 
     except Exception as exc:
-        print "[EXCEPTION setDeviceNumber: %s] Device number: %s set for storage group: % failed!" %(parName, sgName, vsrTempl['device-number']), exc.message
+        print ("[EXCEPTION setDeviceNumber: %s] Device number: %s set for storage group: % failed!" %(parName, sgName, vsrTempl['device-number']), exc.message)
 # ------------------------------------------------------------------ #
 # ----- End of setDeviceNumber function ---------------------------- #
 # ------------------------------------------------------------------ #
@@ -655,9 +655,9 @@ def setTapeLinkDeviceNumber(partUri, parName, tlUri, tlName, devnumList):
             vtrTempl = dict()
             vtrTempl['device-number'] = devnumList.pop()
             if updateVirtualTapeResourceProperties(hmc, vtrUri, vtrTempl):
-                print ">>> Set Tape link device number for %s successfully: %s" %(tlName, vtrTempl['device-number'])
+                print (">>> Set Tape link device number for %s successfully: %s" %(tlName, vtrTempl['device-number']))
     except Exception as exc:
-        print "[EXCEPTION setTapeLinkDeviceNumber: %s] %s set for partition: %s failed!" %(tlName, devnumList, parName), exc.message
+        print ("[EXCEPTION setTapeLinkDeviceNumber: %s] %s set for partition: %s failed!" %(tlName, devnumList, parName), exc.message)
 # ------------------------------------------------------------------ #
 # ----- End of setTapeLinkDeviceNumber function -------------------- #
 # ------------------------------------------------------------------ #
@@ -672,6 +672,9 @@ def setBootOption(partUri, parName, bootOptionDict):
             return False
         
         # only set the boot option when boot from SAN
+        if 'boot_device' not in bootOptionDict:
+            return False
+        
         if bootOptionDict['boot_device'] != 'storage-volume':
             return False
         
@@ -683,12 +686,12 @@ def setBootOption(partUri, parName, bootOptionDict):
         bootSgUri = selectStorageGroup(hmc, bootSgName)
         # check the storage group exist
         if bootSgUri == None:
-            print ">>> Set boot option for %s failed: the boot storage group %s not exist!" %(parName, bootSgName)
+            print (">>> Set boot option for %s failed: the boot storage group %s not exist!" %(parName, bootSgName))
             return False
         # check the storage group statue is complete
         sgRet = getStorageGroupProperties(hmc, sgURI=bootSgUri)
         if assertValue(pyObj=sgRet, key='fulfillment-state') != 'complete':
-            print ">>> Set boot option for %s failed: the boot storage group is in %s state!" %(parName, assertValue(pyObj=sgRet, key='fulfillment-state'))
+            print (">>> Set boot option for %s failed: the boot storage group is in %s state!" %(parName, assertValue(pyObj=sgRet, key='fulfillment-state')))
             return False
 
         # check the storage group have already attached to this partition
@@ -732,7 +735,7 @@ def setBootOption(partUri, parName, bootOptionDict):
         
         if 'boot-storage-volume' in bootTempl:
             if updatePartitionProperties(hmcConn=hmc, parURI=partUri, parProp=bootTempl):
-                print ">>> Set boot option for", parName,  "successfully!!!"
+                print (">>> Set boot option for", parName,  "successfully!!!")
                 bootTempl2 = dict()
                 bootTempl2['boot-device'] = 'storage-volume'
                 
@@ -743,15 +746,15 @@ def setBootOption(partUri, parName, bootOptionDict):
                 updatePartitionProperties(hmcConn=hmc, parURI=partUri, parProp=bootTempl2)
                 return True
             else:
-                print ">>> Set boot option for", parName, "failed!!!"
+                print (">>> Set boot option for", parName, "failed!!!")
                 return False
         else:
-            print ">>> Set boot option for", parName, "failed: couldn't find the target storage volume!!!"
+            print (">>> Set boot option for", parName, "failed: couldn't find the target storage volume!!!")
             return False
         
         
     except Exception as exc:
-        print "[EXCEPTION setBootOption: %s] Boot option set failed!" %parName, exc.message
+        print ("[EXCEPTION setBootOption: %s] Boot option set failed!" %parName, exc.message)
 
 
 def restoreAdapterDescription(backupAdapterDict):
@@ -760,7 +763,7 @@ def restoreAdapterDescription(backupAdapterDict):
     try:
         for adaDict in getCPCAdaptersList(hmc, cpcID):
             adaProp = getAdapterProperties(hmc, adaDict['object-uri'])
-            if str(adaProp['description']) == "" and backupAdapterDict.has_key(str(adaProp['adapter-id'])) and str(eval(backupAdapterDict[str(adaProp['adapter-id'])])['description']) != "":
+            if str(adaProp['description']) == "" and str(adaProp['adapter-id']) in backupAdapterDict and str(eval(backupAdapterDict[str(adaProp['adapter-id'])])['description']) != "":
                 # update the adapter description field by description in backup config file
                 #     if the current adapter description field is null
                 # and if the adapter id is exist in the backup config file
@@ -768,10 +771,43 @@ def restoreAdapterDescription(backupAdapterDict):
                 descTemp = dict()
                 descTemp['description'] = str(eval(backupAdapterDict[adaProp['adapter-id']])['description'])
                 updateAdapterProperties(hmc, str(adaProp['object-uri']), descTemp)
-                print ">>> restoreAdapterDescription for adapter", adaProp['adapter-id'], "successfully"
+                print (">>> restoreAdapterDescription for adapter", adaProp['adapter-id'], "successfully")
 
     except Exception as exc:
-        print "[EXCEPTION restoreAdapterDescription] failed!", exc.message
+        print ("[EXCEPTION restoreAdapterDescription] failed!", exc.message)
+
+def restorePartitionLinks(backupPlDict):
+    global hmc, cpcID, cpcURI
+    
+    try:
+        partObjs = getCPCPartitionsList(hmc, cpcID)
+        for plPropStr in list(backupPlDict.values()):
+            plProp = eval(plPropStr)
+            plTemp = dict()
+            plTemp['name'] = plProp['name']
+            plTemp['description'] = plProp['description']
+            plTemp['type'] = plProp['type']
+            plTemp['cpc-uri'] = cpcURI
+            plTemp['starting-fid'] = plProp['starting-fid']
+            # for bus-connections
+            plTemp['bus-connections'] = []
+            for busConn in plProp['bus-connections']:
+                newBusTemp = dict()
+                for partObj in partObjs:
+                    if partObj['name'] == busConn['partition-name']:
+                        newBusTemp['partition-uri'] = partObj['object-uri']
+                        break
+                newBusTemp['number-of-nics'] = len(busConn['nics'])
+                ''' new-bus-connection nested object is optional
+                for nic in busConn['nics']:
+                    del nic['uuid']
+                newBusTemp['nics'] = busConn['nics']
+                '''
+                plTemp['bus-connections'].append(newBusTemp)
+            createPartitionLink(hmc, plTemp)
+
+    except Exception as exc:
+        print ("[EXCEPTION restorePartitionLinks] failed!", exc.message)
 
 # main function
 try:
@@ -779,7 +815,7 @@ try:
     loadConfig(configFile)
 
     # Access HMC system and create HMC connection 
-    print ">>> Creating HMC connection..."
+    print (">>> Creating HMC connection...")
     hmc = createHMCConnection(hmcHost=hmcHost)
     cpc = selectCPC(hmc, cpcName)
     cpcURI = assertValue(pyObj=cpc, key=KEY_CPC_URI)
@@ -788,32 +824,36 @@ try:
 
     # Get CPC UUID
     cpcID = cpcURI.replace('/api/cpcs/','')
-    print ">>> HMC connection created!"
+    print (">>> HMC connection created!")
 
     # restore adapter description field (No need to do this)
-    #if sectionDict.has_key('--adapter--'):
+    #if '--adapter--' in sectionDict:
     #    restoreAdapterDescription(sectionDict['--adapter--'])
 
     threads = []
     for parName in sectionDict.keys():
-        if parName != "--adapter--":
+        if parName != "--adapter--" and parName != "--partitionlink--":
             t = threading.Thread(target=procSinglePartition, args=(parName,))
-            print ">>> Creating partition: " + parName + "..."
+            print (">>> Creating partition: " + parName + "...")
             t.start()
             threads.append(t)
     for t in threads:
         t.join()
 
+    # restore partition links
+    if '--partitionlink--' in sectionDict:
+        restorePartitionLinks(sectionDict['--partitionlink--'])
+
 except IOError as exc:
-    print "[EXCEPTION] Configure file read error!", exc
+    print ("[EXCEPTION] Configure file read error!", exc)
 except Exception as exc:
-    print "[EXCEPTION]", exc.message
+    print ("[EXCEPTION]", exc.message)
   
 finally:
     if hmc != None:
         hmc.logoff()
     if (len(createPass) != 0):
-        print "Here are the partition(s) be created successfully:", createPass
+        print ("Here are the partition(s) be created successfully:", createPass)
     if (len(createFail) != 0):
-        print "Here are the partition(s) be created failed:", createFail
-    print "Script run completed!!!"
+        print ("Here are the partition(s) be created failed:", createFail)
+    print ("Script run completed!!!")
