@@ -57,6 +57,15 @@
             "python": "${command:python.interpreterPath}",
             "args": ["-hmc", "9.12.35.135", "-cpc", "A90", "-config", "${workspaceFolder}/A90-pl.cfg"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "temp list sg",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/listStorageGroups.py",
+            "python": "${command:python.interpreterPath}",
+            "args": ["-hmc", "9.12.35.135", "-cpc", "A90"],
+            "console": "integratedTerminal"
         }
     ]
 }
